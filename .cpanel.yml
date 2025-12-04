@@ -1,0 +1,20 @@
+---
+deployment:
+  tasks:
+    - /bin/echo "Starting deployment for franchise-frontend"
+
+    # Install dependencies
+    - /usr/local/bin/npm install
+
+    # Build
+    - /usr/local/bin/npm run build || { echo "React build failed"; exit 1; }
+
+    # Deployment path
+    - export DEPLOYPATH=/home/fuma/public_html/fumaretail/
+
+    - /bin/mkdir -p $DEPLOYPATH
+
+    # Copy compiled frontend
+    - /bin/rsync -av --delete build/ $DEPLOYPATH
+
+    - /bin/echo "Deployment finished for franchise-frontend"
