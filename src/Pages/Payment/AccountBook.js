@@ -213,15 +213,15 @@ function AccountBook() {
       const result = response.data;
       setData(result);
 
-      const script = document.createElement("script");
-      script.src = "/js/JqueryContent.js";
-      script.async = true;
+      // const script = document.createElement("script");
+      // script.src = "/js/JqueryContent.js";
+      // script.async = true;
 
-      document.body.appendChild(script);
+      // document.body.appendChild(script);
 
-      return () => {
-        document.body.removeChild(script);
-      };
+      // return () => {
+      //   document.body.removeChild(script);
+      // };
     } catch (error) {
       console.error("Error fetching data:", error);
     }
