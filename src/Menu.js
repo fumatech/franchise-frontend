@@ -76,6 +76,7 @@ const Menu = () => {
         path.startsWith("/TaxReport"),
       setting:
         path.startsWith("/taxRate") ||
+        path.startsWith("/ImageUpload") ||
         path.startsWith("/BusinessDetails") ||
         path.startsWith("/permission"),
     });
@@ -147,6 +148,7 @@ const Menu = () => {
       setActiveMenu("report");
     } else if (
       path.startsWith("/taxRate") ||
+      path.startsWith("/ImageUpload") ||
       path.startsWith("/BusinessDetails") ||
       path.startsWith("/permission")
     ) {
@@ -236,6 +238,8 @@ const Menu = () => {
       setActiveSubMenu("PurchasePaymentReport");
     } else if (path === "/taxRate") {
       setActiveSubMenu("taxRate");
+    } else if (path === "/ImageUpload") {
+      setActiveSubMenu("ImageUpload");
     } else if (path === "/BusinessDetails") {
       setActiveSubMenu("BusinessDetails");
     } else if (path === "/permission") {
@@ -1810,6 +1814,25 @@ const Menu = () => {
                       }}
                     >
                       <p>permission</p>
+                    </Link>
+                  </li>
+                  <li className="nav-item">
+                    <Link
+                      to="/ImageUpload"
+                      className={getSubMenuItemClass("ImageUpload")}
+                      style={{
+                        color:
+                          activeSubMenu === "ImageUpload"
+                            ? "#0040C1"
+                            : "#4b5565",
+                        backgroundColor:
+                          activeSubMenu === "ImageUpload"
+                            ? "rgba(0, 64, 193, 0.08)"
+                            : "transparent",
+                        paddingLeft: "52px",
+                      }}
+                    >
+                      <p>Image Upload</p>
                     </Link>
                   </li>
                 </ul>

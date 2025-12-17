@@ -11,13 +11,13 @@ import "jspdf-autotable";
 import * as XLSX from "xlsx";
 import $ from "jquery";
 
-const PurchasePaymentReport = () => {
+const SalePaymentReport = () => {
   const [purchasePaymentItems, setPurchasePaymentItems] = useState([]);
   const [columnsVisibility, setColumnsVisibility] = useState({
     referenceNo: true,
     paidOn: true,
     amount: true,
-    supplier: true,
+    customer: true,
     paymentMethod: true,
     purchase: true,
     addedBy: true,
@@ -29,7 +29,7 @@ const PurchasePaymentReport = () => {
     const fetchReportItems = async () => {
       try {
         const response = await fetch(
-          `${process.env.REACT_APP_BASE_URL}/transaction/purchase`
+          `${process.env.REACT_APP_BASE_URL}/transaction/sale`
         );
 
         if (!response.ok) {
@@ -67,7 +67,7 @@ const PurchasePaymentReport = () => {
       ReferenceNo: item.referenceNo,
       PaidOn: item.paidOn,
       Amount: item.amount,
-      Supplier: item.supplier,
+      customer: item.customer,
       PaymentMethod: item.paymentMethod,
       Purchase: item.purchase,
       addedBy: item.addedBy,
@@ -78,7 +78,7 @@ const PurchasePaymentReport = () => {
         "Reference No",
         "Paid On",
         "Amount",
-        "Supplier",
+        "customer",
         "Payment Method",
         "Purchase",
         "addedBy",
@@ -98,7 +98,7 @@ const PurchasePaymentReport = () => {
         ReferenceNo: item.referenceNo,
         PaidOn: item.paidOn,
         Amount: item.amount,
-        Supplier: item.supplier,
+        customer: item.customer,
         PaymentMethod: item.paymentMethod,
         Purchase: item.purchase,
         addedBy: item.addedBy,
@@ -117,7 +117,7 @@ const PurchasePaymentReport = () => {
           "Reference No",
           "Paid On",
           "Amount",
-          "Supplier",
+          "customer",
           "Payment Method",
           "Purchase",
           "addedBy",
@@ -127,7 +127,7 @@ const PurchasePaymentReport = () => {
         item.referenceNo,
         item.paidOn,
         item.amount,
-        item.supplier,
+        item.customer,
         item.paymentMethod,
         item.purchase,
         item.addedBy,
@@ -158,7 +158,7 @@ const PurchasePaymentReport = () => {
                 ${columnsVisibility.referenceNo ? "<th>Reference No</th>" : ""}
                 ${columnsVisibility.paidOn ? "<th>Paid On</th>" : ""}
                 ${columnsVisibility.amount ? "<th>Amount</th>" : ""}
-                ${columnsVisibility.supplier ? "<th>Supplier</th>" : ""}
+                ${columnsVisibility.customer ? "<th>Customer</th>" : ""}
                 ${
                   columnsVisibility.paymentMethod
                     ? "<th>Payment Method</th>"
@@ -182,8 +182,8 @@ const PurchasePaymentReport = () => {
                     ${columnsVisibility.paidOn ? `<td>${item.paidOn}</td>` : ""}
                     ${columnsVisibility.amount ? `<td>${item.amount}</td>` : ""}
                     ${
-                      columnsVisibility.supplier
-                        ? `<td>${item.supplier}</td>`
+                      columnsVisibility.customer
+                        ? `<td>${item.franchiseName}</td>`
                         : ""
                     }
                     ${
@@ -242,7 +242,6 @@ const PurchasePaymentReport = () => {
     }));
   };
 
-  // Calculate totals dynamically
   const calculateTotals = () => {
     const displayedItems = purchasePaymentItems.slice(startIndex, endIndex);
     const totalAmount = displayedItems.reduce(
@@ -264,7 +263,7 @@ const PurchasePaymentReport = () => {
           <div className="container-fluid">
             <div className="row mb-2">
               <div className="col-12 col-md-6">
-                <h1>Purchase Payment Report</h1>
+                <h1>Sale Payment Report</h1>
               </div>
             </div>
           </div>
@@ -365,7 +364,7 @@ const PurchasePaymentReport = () => {
                         {columnsVisibility.referenceNo && <th>Reference No</th>}
                         {columnsVisibility.paidOn && <th>Paid On</th>}
                         {columnsVisibility.amount && <th>Amount</th>}
-                        {columnsVisibility.supplier && <th>Supplier</th>}
+                        {columnsVisibility.customer && <th>Customer</th>}
                         {columnsVisibility.paymentMethod && (
                           <th>Payment Method</th>
                         )}
@@ -386,8 +385,8 @@ const PurchasePaymentReport = () => {
 
                             {columnsVisibility.amount && <td>{item.amount}</td>}
 
-                            {columnsVisibility.supplier && (
-                              <td>{item.vendor}</td>
+                            {columnsVisibility.customer && (
+                              <td>{item.franchiseName}</td>
                             )}
 
                             {columnsVisibility.paymentMethod && (
@@ -433,4 +432,4 @@ const PurchasePaymentReport = () => {
   );
 };
 
-export default PurchasePaymentReport;
+export default SalePaymentReport;

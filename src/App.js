@@ -95,6 +95,7 @@ import AddAccount from "./Pages/Payment/AddAccount";
 import ListPaymentMethod from "./Pages/Payment/ListPaymentMethod";
 import PaymentMethod from "./Pages/Payment/PaymentMethod";
 import TaxRate from "./Pages/Setting/TaxRate";
+import ImageUpload from "./Pages/Setting/ImageUpload";
 import SellInvoice from "./Pages/Sell/SellInvoice";
 import SaleInvoice from "./Pages/Sell/SaleInvoice";
 import POSInterface from "./POSInterface";
@@ -388,9 +389,11 @@ const App = () => {
                   />
                   <Route path="/OutputTaxSales" element={<OutputTaxSales />} />
                   <Route path="/ExpenseTax" element={<ExpenseTax />} />
-                  {/* <Route path="/no-access" element={<div>No Access</div>} /> */}
+                  {/* <Route path="/" element={<div>No Access</div>} /> */}
 
                   <Route path="/TaxRate" element={<TaxRate />} />
+                  <Route path="/ImageUpload" element={<ImageUpload />} />
+
                   <Route
                     path="/BusinessDetails"
                     element={<BusinessDetails />}
@@ -433,8 +436,7 @@ const App = () => {
 const Layout = ({ children, userRoles }) => {
   const location = useLocation();
 
-  const isAuthPage =
-    location.pathname === "/" || location.pathname === "/no-access";
+  const isAuthPage = location.pathname === "/" || location.pathname === "/";
 
   return (
     <>

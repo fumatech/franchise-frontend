@@ -25,18 +25,21 @@ const ProductPurchaseReport = () => {
     subtotal: true,
   });
   const [currentPage, setCurrentPage] = useState(1);
-  const [entriesPerPage, setEntriesPerPage] = useState(25);
+  const [entriesPerPage, setEntriesPerPage] = useState(10);
 
   useEffect(() => {
     const fetchProductPurchaseReport = async () => {
       try {
         const response = await fetch(
-          "http://localhost:8080/ProductPurchaseReport/getall"
+          `${process.env.REACT_APP_BASE_URL}/ProductPurchaseReport/getall`
         );
+
         if (!response.ok) {
           throw new Error("Network response was not ok");
         }
+
         const data = await response.json();
+
         if (Array.isArray(data)) {
           setProductPurchaseReport(data);
         } else {
@@ -47,10 +50,12 @@ const ProductPurchaseReport = () => {
         console.error("Error fetching report items:", error);
         setProductPurchaseReport([]);
       }
+
       const script = document.createElement("script");
       script.src = "js/JqueryContent.js";
       script.async = true;
       document.body.appendChild(script);
+
       return () => {
         document.body.removeChild(script);
       };
@@ -335,6 +340,7 @@ const ProductPurchaseReport = () => {
                       value={entriesPerPage}
                       onChange={handleEntriesChange}
                     >
+                      <option value={10}>10</option>
                       <option value={25}>25</option>
                       <option value={50}>50</option>
                       <option value={75}>75</option>
@@ -431,14 +437,19 @@ const ProductPurchaseReport = () => {
                         (item, index) => (
                           <tr key={index}>
                             {columnsVisibility.product && (
-                              <td>{item.product}</td>
+                              <td>
+                                {item.productName}
+                                {item.variationValue
+                                  ? ` - ${item.variationValue}`
+                                  : ""}
+                              </td>
                             )}
                             {columnsVisibility.sku && <td>{item.sku}</td>}
                             {columnsVisibility.supplier && (
                               <td>{item.supplier}</td>
                             )}
                             {columnsVisibility.referenceNo && (
-                              <td>{item.referenceNo}</td>
+                              <td>{item.referenceNumber}</td>
                             )}
                             {columnsVisibility.date && <td>{item.date}</td>}
                             {columnsVisibility.quantity && (

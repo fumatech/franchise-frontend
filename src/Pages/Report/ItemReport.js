@@ -31,15 +31,19 @@ const ItemReport = () => {
     subtotal: true,
   });
   const [currentPage, setCurrentPage] = useState(1);
-  const [entriesPerPage, setEntriesPerPage] = useState(25);
+  const [entriesPerPage, setEntriesPerPage] = useState(10);
 
   useEffect(() => {
     const fetchReportItems = async () => {
       try {
-        const response = await fetch("http://localhost:8080/itemReport/getall");
+        const response = await fetch(
+          `${process.env.REACT_APP_BASE_URL}/itemReport/getall`
+        );
+
         if (!response.ok) {
           throw new Error("Network response was not ok");
         }
+
         const data = await response.json();
         if (Array.isArray(data)) {
           setReportItems(data);
@@ -51,10 +55,12 @@ const ItemReport = () => {
         console.error("Error fetching report items:", error);
         setReportItems([]);
       }
+
       const script = document.createElement("script");
       script.src = "js/JqueryContent.js";
       script.async = true;
       document.body.appendChild(script);
+
       return () => {
         document.body.removeChild(script);
       };
@@ -396,6 +402,7 @@ const ItemReport = () => {
                       value={entriesPerPage}
                       onChange={handleEntriesChange}
                     >
+                      <option value={10}>10</option>
                       <option value={25}>25</option>
                       <option value={50}>50</option>
                       <option value={75}>75</option>

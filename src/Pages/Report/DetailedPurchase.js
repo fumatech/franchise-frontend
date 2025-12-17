@@ -23,7 +23,7 @@ const DetailedPurchase = () => {
     quantity: true,
   });
   const [currentPage, setCurrentPage] = useState(1);
-  const [entriesPerPage, setEntriesPerPage] = useState(25);
+  const [entriesPerPage, setEntriesPerPage] = useState(10);
 
   useEffect(() => {
     const fetchDetailedPurchase = async () => {
@@ -255,8 +255,10 @@ const DetailedPurchase = () => {
                         setCurrentPage(1);
                       }}
                     >
+                      <option value={10}>10</option>
                       <option value={25}>25</option>
                       <option value={50}>50</option>
+                      <option value={75}>75</option>
                       <option value={100}>100</option>
                     </select>
                     Entries

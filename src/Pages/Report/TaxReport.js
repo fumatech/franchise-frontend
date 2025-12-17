@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from "react";
 
-
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faList,
@@ -35,10 +34,6 @@ const tabsData = [
   },
 ];
 
-
-
-
-
 const TaxReport = () => {
   const [activeTab, setActiveTab] = useState("InputTaxPurchase");
   const [displayValue, setDisplayValue] = useState("");
@@ -51,11 +46,11 @@ const TaxReport = () => {
     const year = date.getFullYear();
     return `${month}/${day}/${year}`;
   };
-  
+
   const handleDateRangeChange = (selectedRange) => {
     let startDate, endDate;
     const today = new Date();
-  
+
     switch (selectedRange) {
       case "today":
         startDate = endDate = today;
@@ -106,24 +101,21 @@ const TaxReport = () => {
         startDate = endDate = null;
         break;
     }
-  
+
     if (startDate && endDate) {
       setDisplayValue(`${formatDate(startDate)} - ${formatDate(endDate)}`);
     } else {
       setDisplayValue("");
     }
-  
+
     setDateRange(selectedRange);
     setDropdownOpen(false);
   };
-  
+
   const toggleDropdown = () => {
     setDropdownOpen(!dropdownOpen);
   };
-  
 
-
-  
   return (
     <>
       <div className="wrapper">
@@ -139,55 +131,58 @@ const TaxReport = () => {
           </section>
 
           <div className="col-12">
-          <div className="card card-primary card-outline card-outline-tabs">
-            <div className="p-0 border-bottom-0">
-              <ul className="nav nav-tabs" role="tablist">
-                {tabsData.map(({ id, label, icon }) => (
-                  <li className="nav-item" key={id}>
-                    <Link
-                      to="#"
-                      className={`nav-link ${activeTab === id ? "active" : ""}`}
-                      onClick={() => setActiveTab(id)}
-                      role="tab"
-                      aria-controls={`product-sell-report-${id}`}
-                      aria-selected={activeTab === id}
-                      style={{
-                        padding: "10px 15px",
-                        borderTop:
-                          activeTab === id ? "3px solid #007bff" : "none",
-                        fontWeight: activeTab === id ? "bold" : "normal",
-                        color: activeTab === id ? "#007bff" : "#000",
-                        transition: "border-top 0.3s ease, color 0.3s ease",
-                      }}
+            <div className="card card-primary card-outline card-outline-tabs">
+              <div className="p-0 border-bottom-0">
+                <ul className="nav nav-tabs" role="tablist">
+                  {tabsData.map(({ id, label, icon }) => (
+                    <li className="nav-item" key={id}>
+                      <Link
+                        to="#"
+                        className={`nav-link ${activeTab === id ? "active" : ""}`}
+                        onClick={() => setActiveTab(id)}
+                        role="tab"
+                        aria-controls={`product-sell-report-${id}`}
+                        aria-selected={activeTab === id}
+                        style={{
+                          padding: "10px 15px",
+                          borderTop:
+                            activeTab === id ? "3px solid #007bff" : "none",
+                          fontWeight: activeTab === id ? "bold" : "normal",
+                          color: activeTab === id ? "#007bff" : "#000",
+                          transition: "border-top 0.3s ease, color 0.3s ease",
+                        }}
+                      >
+                        <FontAwesomeIcon
+                          icon={icon}
+                          style={{ marginRight: "5px" }}
+                        />
+                        {label}
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+              <div className="card-body">
+                <div
+                  className="tab-content"
+                  id="product-sell-report-tabContent"
+                >
+                  {tabsData.map(({ id, component }) => (
+                    <div
+                      className={`tab-pane fade ${
+                        activeTab === id ? "active show" : ""
+                      }`}
+                      id={`product-sell-report-${id}`}
+                      aria-labelledby={`product-sell-report-${id}-tab`}
+                      key={id}
                     >
-                      <FontAwesomeIcon
-                        icon={icon}
-                        style={{ marginRight: "5px" }}
-                      />
-                      {label}
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            </div>
-            <div className="card-body">
-              <div className="tab-content" id="product-sell-report-tabContent">
-                {tabsData.map(({ id, component }) => (
-                  <div
-                    className={`tab-pane fade ${
-                      activeTab === id ? "active show" : ""
-                    }`}
-                    id={`product-sell-report-${id}`}
-                    aria-labelledby={`product-sell-report-${id}-tab`}
-                    key={id}
-                  >
-                    {activeTab === id && component}{" "}
-                  </div>
-                ))}
+                      {activeTab === id && component}{" "}
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
           </div>
-        </div>
           {/* filter 1 Product start */}
           {/* <div className="px-3 my-4">
           <label>Custom Filter</label>
