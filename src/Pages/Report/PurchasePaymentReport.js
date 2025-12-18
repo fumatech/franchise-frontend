@@ -10,6 +10,7 @@ import { jsPDF } from "jspdf";
 import "jspdf-autotable";
 import * as XLSX from "xlsx";
 import $ from "jquery";
+import axios from "axios";
 
 const PurchasePaymentReport = () => {
   const [purchasePaymentItems, setPurchasePaymentItems] = useState([]);
@@ -24,19 +25,14 @@ const PurchasePaymentReport = () => {
   });
   const [currentPage, setCurrentPage] = useState(1);
   const [entriesPerPage, setEntriesPerPage] = useState(10);
-
   useEffect(() => {
     const fetchReportItems = async () => {
       try {
-        const response = await fetch(
+        const response = await axios.get(
           `${process.env.REACT_APP_BASE_URL}/transaction/purchase`
         );
 
-        if (!response.ok) {
-          throw new Error("Network response was not ok");
-        }
-
-        const data = await response.json();
+        const data = response.data;
 
         if (Array.isArray(data)) {
           setPurchasePaymentItems(data);

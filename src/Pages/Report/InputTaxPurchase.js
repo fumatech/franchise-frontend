@@ -9,7 +9,8 @@ import { saveAs } from "file-saver";
 import { jsPDF } from "jspdf";
 import "jspdf-autotable";
 import * as XLSX from "xlsx";
-
+import axios from "axios";
+import api from "../utils/api";
 const InputTaxPurchase = () => {
   const [inputTaxPurchase, setInputTaxPurchase] = useState([]);
   const [taxes, setTaxes] = useState([]);
@@ -25,20 +26,21 @@ const InputTaxPurchase = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [entriesPerPage, setEntriesPerPage] = useState(10);
 
-  // Fetch tax types
   useEffect(() => {
-    fetch(`${process.env.REACT_APP_BASE_URL}/tax/getall`)
-      .then((res) => res.json())
-      .then((data) => setTaxes(data))
+    axios
+      .get(`${process.env.REACT_APP_BASE_URL}/tax/getall`)
+      .then((res) => {
+        setTaxes(res.data);
+      })
       .catch(console.error);
   }, []);
-
-  // Fetch purchase orders
   useEffect(() => {
-    fetch(`${process.env.REACT_APP_BASE_URL}/purchase-combined-orders/with-tax`)
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.orders) setInputTaxPurchase(data.orders);
+    axios
+      .get(
+        `${process.env.REACT_APP_BASE_URL}/purchase-combined-orders/with-tax`
+      )
+      .then((res) => {
+        if (res.data.orders) setInputTaxPurchase(res.data.orders);
         else setInputTaxPurchase([]);
       })
       .catch(console.error);

@@ -68,6 +68,7 @@ import GroupedDate from "./Pages/Report/GroupedDate";
 import ByCategory from "./Pages/Report/ByCategory";
 import ByBrand from "./Pages/Report/ByBrand";
 import PurchasePaymentReport from "./Pages/Report/PurchasePaymentReport";
+import SalePaymentReport from "./Pages/Report/SalePaymentReport";
 import Detailed from "./Pages/Report/Detailed";
 import InputTaxPurchase from "./Pages/Report/InputTaxPurchase";
 import OutputTaxSales from "./Pages/Report/OutputTaxSales";
@@ -378,6 +379,10 @@ const App = () => {
                   <Route
                     path="/PurchasePaymentReport"
                     element={<PurchasePaymentReport />}
+                  />
+                  <Route
+                    path="/SalePaymentReport"
+                    element={<SalePaymentReport />}
                   />
                   <Route
                     path="/ProductStockHistory"

@@ -10,6 +10,7 @@ import { jsPDF } from "jspdf";
 import "jspdf-autotable";
 import * as XLSX from "xlsx";
 import $ from "jquery";
+import axios from "axios";
 import { Modal } from "react-bootstrap";
 
 const StockAdjustmentReport = () => {
@@ -29,16 +30,18 @@ const StockAdjustmentReport = () => {
   const [entriesPerPage, setEntriesPerPage] = useState(25);
   const [showModal, setShowModal] = useState(false);
   const [selectedReport, setSelectedReport] = useState(null);
-
   useEffect(() => {
     const fetchReports = async () => {
       try {
-        const response = await fetch(
+        const response = await axios.get(
           `${process.env.REACT_APP_BASE_URL}/stock-adjustments/getall`
         );
-        if (!response.ok) throw new Error("Network response was not ok");
-        const data = await response.json();
-        setStockAdjustmentReports(data);
+
+        setStockAdjustmentReports(
+          Array.isArray(response.data)
+            ? response.data
+            : response.data?.orders || []
+        );
       } catch (error) {
         console.error("Failed to fetch stock adjustment reports:", error);
       }

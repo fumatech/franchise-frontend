@@ -71,6 +71,7 @@ const Menu = () => {
         path.startsWith("/ProductPurchaseReport") ||
         path.startsWith("/ProductSellReport") ||
         path.startsWith("/PurchasePaymentReport") ||
+        path.startsWith("/SalePaymentReport") ||
         path.startsWith("/StockAdjustmentReport") ||
         path.startsWith("/StockReport") ||
         path.startsWith("/TaxReport"),
@@ -141,6 +142,7 @@ const Menu = () => {
       path.startsWith("/ProductPurchaseReport") ||
       path.startsWith("/ProductSellReport") ||
       path.startsWith("/PurchasePaymentReport") ||
+      path.startsWith("/SalePaymentReport") ||
       path.startsWith("/StockAdjustmentReport") ||
       path.startsWith("/StockReport") ||
       path.startsWith("/TaxReport")
@@ -236,6 +238,8 @@ const Menu = () => {
       setActiveSubMenu("ProductSellReport");
     } else if (path === "/PurchasePaymentReport") {
       setActiveSubMenu("PurchasePaymentReport");
+    } else if (path === "/SalePaymentReport") {
+      setActiveSubMenu("SalePaymentReport");
     } else if (path === "/taxRate") {
       setActiveSubMenu("taxRate");
     } else if (path === "/ImageUpload") {
@@ -1701,6 +1705,25 @@ const Menu = () => {
                       }}
                     >
                       <p>Purchase Payment Report</p>
+                    </Link>
+                  </li>
+                  <li className="nav-item">
+                    <Link
+                      to="/SalePaymentReport"
+                      className={getSubMenuItemClass("SalePaymentReport")}
+                      style={{
+                        color:
+                          activeSubMenu === "SalePaymentReport"
+                            ? "#0040C1"
+                            : "#4b5565",
+                        backgroundColor:
+                          activeSubMenu === "SalePaymentReport"
+                            ? "rgba(0, 64, 193, 0.08)"
+                            : "transparent",
+                        paddingLeft: "52px",
+                      }}
+                    >
+                      <p>Sale Payment Report</p>
                     </Link>
                   </li>
                 </ul>

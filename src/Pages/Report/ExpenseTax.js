@@ -10,6 +10,7 @@ import { jsPDF } from "jspdf";
 import "jspdf-autotable";
 import * as XLSX from "xlsx";
 import $ from "jquery";
+import axios from "axios";
 
 const ExpenseTax = () => {
   const [ExpenseTax, setExpenseTax] = useState([]);
@@ -25,11 +26,12 @@ const ExpenseTax = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [entriesPerPage, setEntriesPerPage] = useState(10);
 
-  // Fetch tax types
   useEffect(() => {
-    fetch(`${process.env.REACT_APP_BASE_URL}/tax/getall`)
-      .then((res) => res.json())
-      .then((data) => setTaxes(data))
+    axios
+      .get(`${process.env.REACT_APP_BASE_URL}/tax/getall`)
+      .then((res) => {
+        setTaxes(res.data);
+      })
       .catch(console.error);
   }, []);
 
