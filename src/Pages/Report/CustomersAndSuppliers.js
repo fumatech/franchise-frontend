@@ -10,6 +10,7 @@ import { jsPDF } from "jspdf";
 import "jspdf-autotable";
 import * as XLSX from "xlsx";
 import $ from "jquery";
+import axios from "axios";
 
 const Clients = () => {
   const [clients, setClients] = useState([]);
@@ -26,9 +27,11 @@ const Clients = () => {
   const [entriesPerPage, setEntriesPerPage] = useState(10);
 
   useEffect(() => {
-    fetch(`${process.env.REACT_APP_BASE_URL}/client-ledger/getall`)
-      .then((res) => res.json())
-      .then((data) => {
+    axios
+      .get(`${process.env.REACT_APP_BASE_URL}/client-ledger/getall`)
+      .then((response) => {
+        const data = response.data;
+
         if (Array.isArray(data)) {
           setClients(data);
         } else {

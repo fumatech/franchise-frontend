@@ -586,6 +586,7 @@ function EditDIPurchase() {
       productId: item.productId,
       variationId: item.productVariationId,
       quantity: item.quantity,
+      price: item.unitSellingPrice,
       transactionType: "di_purchase",
       date: new Date().toISOString().split("T")[0],
       note: "Stock updated after DI purchase",

@@ -12,6 +12,7 @@ import * as XLSX from "xlsx";
 import $ from "jquery";
 import "datatables.net-bs4";
 import "datatables.net-responsive-bs4";
+import axios from "axios";
 
 const Detailed = () => {
   const [productSellReport, setProductSellReport] = useState([]);
@@ -36,15 +37,11 @@ const Detailed = () => {
   useEffect(() => {
     const fetchProductSellReport = async () => {
       try {
-        const response = await fetch(
+        const response = await axios.get(
           `${process.env.REACT_APP_BASE_URL}/sell-report/getall`
         );
 
-        if (!response.ok) {
-          throw new Error("Network response was not ok");
-        }
-
-        const data = await response.json();
+        const data = response.data;
 
         if (Array.isArray(data)) {
           setProductSellReport(data);
@@ -53,7 +50,10 @@ const Detailed = () => {
           setProductSellReport([]);
         }
       } catch (error) {
-        console.error("Error fetching product sell report:", error);
+        console.error(
+          "Error fetching product sell report:",
+          error.response?.data || error.message
+        );
         setProductSellReport([]);
       }
     };
@@ -442,7 +442,7 @@ const Detailed = () => {
                       <tr>
                         {columnsVisibility.products && <th>Products</th>}
                         {columnsVisibility.sku && <th>SKU</th>}
-                        {columnsVisibility.franchise && <th>Franchise</th>}
+                        {columnsVisibility.franchise && <th>Customer</th>}
                         {columnsVisibility.customerId && <th>Customer ID</th>}
                         {columnsVisibility.invoiceNo && <th>Invoice No</th>}
                         {columnsVisibility.date && <th>Date</th>}
@@ -467,7 +467,7 @@ const Detailed = () => {
                             )}
                             {columnsVisibility.sku && <td>{item.sku}</td>}
                             {columnsVisibility.franchise && (
-                              <td>{item.franchise}</td>
+                              <td>{item.customer}</td>
                             )}
                             {columnsVisibility.customerId && (
                               <td>{item.customerId}</td>

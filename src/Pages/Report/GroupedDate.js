@@ -9,6 +9,7 @@ import { saveAs } from "file-saver";
 import { jsPDF } from "jspdf";
 import "jspdf-autotable";
 import * as XLSX from "xlsx";
+import axios from "axios";
 
 const GroupedDate = () => {
   const [groupedDate, setGroupedDate] = useState([]);
@@ -26,30 +27,64 @@ const GroupedDate = () => {
   useEffect(() => {
     const fetchGroupedDate = async () => {
       try {
-        const response = await fetch(
-          `${process.env.REACT_APP_BASE_URL}/reports/date-wise`
+        // 1️⃣ Fetch all sales
+        const res = await axios.get(
+          `${process.env.REACT_APP_BASE_URL}/sale/getall`
         );
-        if (!response.ok) {
-          throw new Error("Network response was not ok");
-        }
-        const data = await response.json();
-        if (Array.isArray(data)) {
-          setGroupedDate(data);
-        } else {
-          console.error("Fetched data is not an array");
-          setGroupedDate([]);
-        }
+
+        const sales = res.data;
+
+        // 2️⃣ Group sales by date + product + variation
+        const groupedMap = {};
+
+        sales.forEach((sale) => {
+          const saleDate = sale.saleDate.split("T")[0];
+
+          sale.saleItems.forEach((item) => {
+            const key = `${saleDate}-${item.productId}-${item.productVariationId}`;
+
+            if (!groupedMap[key]) {
+              groupedMap[key] = {
+                id: key,
+                productId: item.productId,
+                variationId: item.productVariationId,
+                productName: item.productName,
+                sku: item.productSku,
+                saleDate: saleDate,
+                totalUnitsSold: 0,
+                totalAmount: 0,
+                currentStock: 0,
+              };
+            }
+
+            groupedMap[key].totalUnitsSold += Number(item.quantity || 0);
+            groupedMap[key].totalAmount += Number(item.lineTotal || 0);
+          });
+        });
+
+        // 3️⃣ Fetch stock for each grouped row
+        const groupedArray = Object.values(groupedMap);
+
+        const stockPromises = groupedArray.map(async (item) => {
+          try {
+            const stockRes = await axios.get(
+              `${process.env.REACT_APP_BASE_URL}/stock-transactions/current-stock/${item.productId}/${item.variationId}`
+            );
+
+            return { ...item, currentStock: stockRes.data };
+          } catch {
+            return { ...item, currentStock: 0 };
+          }
+        });
+
+        // 4️⃣ Resolve all stock calls
+        const finalData = await Promise.all(stockPromises);
+
+        setGroupedDate(finalData);
       } catch (error) {
-        console.error("Error fetching product sell report:", error);
+        console.error("Error fetching grouped sales with stock:", error);
         setGroupedDate([]);
       }
-      const script = document.createElement("script");
-      script.src = "js/JqueryContent.js";
-      script.async = true;
-      document.body.appendChild(script);
-      return () => {
-        document.body.removeChild(script);
-      };
     };
 
     fetchGroupedDate();

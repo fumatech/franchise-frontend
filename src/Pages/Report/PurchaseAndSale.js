@@ -1,36 +1,44 @@
 import React, { useState, useEffect } from "react";
+import axios from "axios";
 
 function PurchaseAndSale() {
+  const [purchaseReturn, setPurchaseReturn] = useState(0);
   const [summary, setSummary] = useState({});
-  const purchaseDue = summary.purchaseDue || 0;
-  const saleDue = summary.saleDue || 0;
-  const finalDueAmount = purchaseDue - saleDue;
-  const saleIncludingTax = summary.saleIncludingTax || 0;
   const purchaseIncludingTax = summary.purchaseIncludingTax || 0;
+  const saleIncludingTax = summary.saleIncludingTax || 0;
+  const purchasePaid = summary.purchaseDue
+    ? purchaseIncludingTax - summary.purchaseDue
+    : 0;
 
-  const saleMinusPurchaseIncludingTax = saleIncludingTax - purchaseIncludingTax;
+  // ✅ Apply purchase return
+  const netPurchaseIncludingTax = purchaseIncludingTax - purchaseReturn;
 
-  // // Fetch summary data
-  // const fetchSummary = async () => {
-  //   try {
-  //     const response = await fetch(
-  //       "http://localhost:8443/summary/purchase-sale"
-  //     );
-  //     const data = await response.json();
-  //     setSummary(data);
-  //   } catch (error) {
-  //     console.error("Error fetching purchase-sale summary:", error);
-  //   }
-  // };
+  // ✅ Correct purchase due
+  const purchaseDue = netPurchaseIncludingTax - purchasePaid;
 
-  // Fetch summary data
+  const saleDue = summary.saleDue || 0;
+
+  // ✅ Overall
+  const finalDueAmount = saleDue - purchaseDue;
+  const saleMinusPurchaseIncludingTax =
+    saleIncludingTax - netPurchaseIncludingTax;
+
+  const franchiseId =
+    localStorage.getItem("tenantDbName") ||
+    sessionStorage.getItem("tenantDbName");
+  console.log(franchiseId);
+
   const fetchSummary = async () => {
     try {
-      const response = await fetch(
-        `${process.env.REACT_APP_BASE_URL}/summary/purchase-sale`
-      );
-      const data = await response.json();
-      setSummary(data);
+      const [summaryRes, returnRes] = await Promise.all([
+        axios.get(`${process.env.REACT_APP_BASE_URL}/summary/purchase-sale`),
+        axios.get(
+          `https://fusionmastertech.com:8443/franchise-purchase-return/franchise/${franchiseId}/total-amount`
+        ),
+      ]);
+
+      setSummary(summaryRes.data);
+      setPurchaseReturn(returnRes.data || 0);
     } catch (error) {
       console.error("Error fetching purchase-sale summary:", error);
     }
@@ -89,7 +97,7 @@ function PurchaseAndSale() {
                           <th>Total Purchase Return Including Tax:</th>
                           <td>
                             <span className="purchase_return_inc_tax">
-                              ₹ {summary.totalPurchaseReturnIncludingTax || 0}
+                              ₹ {purchaseReturn}
                             </span>
                           </td>
                         </tr>

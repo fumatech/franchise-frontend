@@ -13,6 +13,7 @@ import * as XLSX from "xlsx";
 const ByBrand = () => {
   const [byBrand, setByBrand] = useState([]);
   const [brandsMap, setBrandsMap] = useState({});
+  const [productBrandMap, setProductBrandMap] = useState({});
 
   const [columnsVisibility, setColumnsVisibility] = useState({
     brand: true,
@@ -22,11 +23,34 @@ const ByBrand = () => {
   });
   const [currentPage, setCurrentPage] = useState(1);
   const [entriesPerPage, setEntriesPerPage] = useState(10);
+
+  useEffect(() => {
+    const fetchProducts = async () => {
+      try {
+        const res = await fetch(
+          `https://fusionmastertech.com:8443/product/getall`
+        );
+        const data = await res.json();
+
+        const map = {};
+        data.forEach((p) => {
+          map[p.id] = p.brand; // brandId stored in product
+        });
+
+        setProductBrandMap(map);
+      } catch (err) {
+        console.error("Error fetching products", err);
+      }
+    };
+
+    fetchProducts();
+  }, []);
+
   useEffect(() => {
     const fetchBrands = async () => {
       try {
         const res = await fetch(
-          `${process.env.REACT_APP_BASE_URL}/brands/getall`
+          `https://fusionmastertech.com:8443/brands/getall`
         );
         const data = await res.json();
 
@@ -46,33 +70,50 @@ const ByBrand = () => {
   }, []);
 
   useEffect(() => {
-    const fetchByBrand = async () => {
+    if (
+      Object.keys(brandsMap).length === 0 ||
+      Object.keys(productBrandMap).length === 0
+    )
+      return;
+
+    const fetchSales = async () => {
       try {
-        const response = await fetch(
-          `${process.env.REACT_APP_BASE_URL}/reports/brand-wise`
+        const res = await fetch(
+          `${process.env.REACT_APP_BASE_URL}/sale/getall`
         );
-        const data = await response.json();
+        const sales = await res.json();
 
-        if (Array.isArray(data)) {
-          const updatedData = data.map((item) => ({
-            ...item,
-            brandName: brandsMap[item.brand] || "Unknown Brand",
-          }));
+        const grouped = {};
 
-          setByBrand(updatedData);
-        } else {
-          setByBrand([]);
-        }
+        sales.forEach((sale) => {
+          sale.saleItems.forEach((item) => {
+            const brandId = productBrandMap[item.productId];
+            const brandName = brandsMap[brandId] || "Unknown Brand";
+
+            if (!grouped[brandId]) {
+              grouped[brandId] = {
+                id: brandId,
+                brandName,
+                totalUnitsSold: 0,
+                totalAmount: 0,
+                currentStock: 0, // optional later
+              };
+            }
+
+            grouped[brandId].totalUnitsSold += Number(item.quantity || 0);
+            grouped[brandId].totalAmount += Number(item.lineTotal || 0);
+          });
+        });
+
+        setByBrand(Object.values(grouped));
       } catch (error) {
         console.error("Error fetching brand-wise report:", error);
         setByBrand([]);
       }
     };
 
-    if (Object.keys(brandsMap).length > 0) {
-      fetchByBrand();
-    }
-  }, [brandsMap]);
+    fetchSales();
+  }, [brandsMap, productBrandMap]);
 
   const exportCSV = () => {
     const csvData = byBrand.map((item) => ({

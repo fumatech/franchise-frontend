@@ -642,7 +642,7 @@ const ListPoPurchaseOrder = () => {
                             <td>{purchase.referenceNumber || "-"}</td>
                           )}
                           {columnsVisibility.purchaseDate && (
-                            <td>{purchase.date || "-"}</td>
+                            <td>{purchase.purchaseDate || "-"}</td>
                           )}
                           {columnsVisibility.vendor && (
                             <td>{purchase.vendor || "-"}</td>

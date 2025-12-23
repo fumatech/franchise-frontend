@@ -797,6 +797,7 @@ function AddPoPurchase() {
       productId: item.productId,
       variationId: item.productVariationId,
       quantity: item.quantity,
+      price: item.unitSellingPrice,
       transactionType: "po_purchase",
       date: new Date().toISOString().split("T")[0],
       note: "Stock updated after PO purchase",

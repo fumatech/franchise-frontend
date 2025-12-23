@@ -13,6 +13,8 @@ import * as XLSX from "xlsx";
 const ByCategory = () => {
   const [byCategory, setByCategory] = useState([]);
   const [categoryMap, setCategoryMap] = useState({});
+  const [productCategoryMap, setProductCategoryMap] = useState({});
+
   const [columnsVisibility, setColumnsVisibility] = useState({
     products: true,
     currentStock: true,
@@ -23,50 +25,81 @@ const ByCategory = () => {
   const [entriesPerPage, setEntriesPerPage] = useState(10);
   useEffect(() => {
     const fetchCategories = async () => {
-      try {
-        const res = await fetch(
-          `${process.env.REACT_APP_BASE_URL}/categories/getall`
-        );
-        const data = await res.json();
+      const res = await fetch(
+        `https://fusionmastertech.com:8443/categories/getall`
+      );
+      const data = await res.json();
 
-        const map = flattenCategories(data);
-        setCategoryMap(map);
-      } catch (err) {
-        console.error("Error fetching categories", err);
-      }
+      const map = {};
+      const flatten = (cats) => {
+        cats.forEach((c) => {
+          map[c.id] = c.categoryName;
+          if (c.subCategories?.length) flatten(c.subCategories);
+        });
+      };
+
+      flatten(data);
+      setCategoryMap(map);
     };
 
     fetchCategories();
   }, []);
-
   useEffect(() => {
-    const fetchByCategory = async () => {
-      try {
-        const response = await fetch(
-          `${process.env.REACT_APP_BASE_URL}/reports/category-wise`
-        );
-        const data = await response.json();
+    const fetchProducts = async () => {
+      const res = await fetch(
+        `https://fusionmastertech.com:8443/product/getall`
+      );
+      const data = await res.json();
 
-        if (Array.isArray(data)) {
-          const updatedData = data.map((item) => ({
-            ...item,
-            categoryName: categoryMap[item.category] || "Unknown Category",
-          }));
+      const map = {};
+      data.forEach((p) => {
+        map[p.id] = p.category; // category ID stored in product
+      });
 
-          setByCategory(updatedData);
-        } else {
-          setByCategory([]);
-        }
-      } catch (error) {
-        console.error("Error fetching category-wise report:", error);
-        setByCategory([]);
-      }
+      setProductCategoryMap(map);
     };
 
-    if (Object.keys(categoryMap).length > 0) {
-      fetchByCategory();
-    }
-  }, [categoryMap]);
+    fetchProducts();
+  }, []);
+
+  useEffect(() => {
+    if (
+      Object.keys(categoryMap).length === 0 ||
+      Object.keys(productCategoryMap).length === 0
+    )
+      return;
+
+    const fetchSales = async () => {
+      const res = await fetch(`${process.env.REACT_APP_BASE_URL}/sale/getall`);
+      const sales = await res.json();
+
+      const grouped = {};
+
+      sales.forEach((sale) => {
+        sale.saleItems.forEach((item) => {
+          const categoryId = productCategoryMap[item.productId];
+          const categoryName = categoryMap[categoryId] || "Unknown Category";
+
+          if (!grouped[categoryId]) {
+            grouped[categoryId] = {
+              id: categoryId,
+              categoryName,
+              totalUnitsSold: 0,
+              totalAmount: 0,
+              currentStock: 0, // optional later
+            };
+          }
+
+          grouped[categoryId].totalUnitsSold += Number(item.quantity || 0);
+          grouped[categoryId].totalAmount += Number(item.lineTotal || 0);
+        });
+      });
+
+      setByCategory(Object.values(grouped));
+    };
+
+    fetchSales();
+  }, [categoryMap, productCategoryMap]);
 
   const flattenCategories = (categories, map = {}) => {
     categories.forEach((cat) => {

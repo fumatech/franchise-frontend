@@ -10,16 +10,18 @@ import { jsPDF } from "jspdf";
 import "jspdf-autotable";
 import * as XLSX from "xlsx";
 import $ from "jquery";
+import axios from "axios";
 
 const ItemReport = () => {
   const [reportItems, setReportItems] = useState([]);
+  const [products, setProducts] = useState([]);
   const [columnsVisibility, setColumnsVisibility] = useState({
     product: true,
-    sku: true,
+    productSku: true,
     description: true,
     purchaseDate: true,
     purchase: true,
-    lotNumber: true,
+    variationValue: true,
     supplier: true,
     purchasePrice: true,
     sellDate: true,
@@ -32,51 +34,68 @@ const ItemReport = () => {
   });
   const [currentPage, setCurrentPage] = useState(1);
   const [entriesPerPage, setEntriesPerPage] = useState(10);
-
+  // Fetch products, variations and report items
   useEffect(() => {
-    const fetchReportItems = async () => {
+    const fetchData = async () => {
       try {
-        const response = await fetch(
-          `${process.env.REACT_APP_BASE_URL}/itemReport/getall`
-        );
+        const [reportRes, productRes, variationRes] = await Promise.all([
+          axios.get(`${process.env.REACT_APP_BASE_URL}/itemReport/getall`),
+          axios.get(`https://fusionmastertech.com:8443/product/getall`),
+          axios.get(`https://fusionmastertech.com:8443/variations/getall`),
+        ]);
 
-        if (!response.ok) {
-          throw new Error("Network response was not ok");
-        }
+        const items = reportRes.data;
+        const productsData = productRes.data;
+        const variationsData = variationRes.data;
 
-        const data = await response.json();
-        if (Array.isArray(data)) {
-          setReportItems(data);
-        } else {
-          console.error("Fetched data is not an array");
-          setReportItems([]);
-        }
+        // 🔹 Create variationId → variationName map
+        const variationNameMap = {};
+        variationsData.forEach((v) => {
+          variationNameMap[v.id] = v.variationName;
+        });
+
+        // 🔹 Enrich items with product & variation data
+        const enrichedItems = items.map((item) => {
+          const product = productsData.find((p) => p.id === item.productId);
+          let variation = null;
+
+          if (product?.productVariations && item.productVariationId) {
+            variation = product.productVariations.find(
+              (v) => v.id === item.productVariationId
+            );
+          }
+
+          return {
+            ...item,
+            productName: product?.productName || item.product,
+            sku: variation?.subSku || product?.sku || "",
+            variationValue: variation?.variationValue || "",
+            location: product?.businessLocation || "",
+            variationName: variationNameMap[variation?.variationName] || "",
+            category: product?.category || "",
+            businessLocation: product?.businessLocation || "",
+          };
+        });
+
+        setProducts(productsData);
+        setReportItems(enrichedItems);
       } catch (error) {
-        console.error("Error fetching report items:", error);
+        console.error("Error fetching data:", error);
         setReportItems([]);
       }
-
-      const script = document.createElement("script");
-      script.src = "js/JqueryContent.js";
-      script.async = true;
-      document.body.appendChild(script);
-
-      return () => {
-        document.body.removeChild(script);
-      };
     };
 
-    fetchReportItems();
+    fetchData();
   }, []);
 
   const exportCSV = () => {
     const csvData = reportItems.map((item) => ({
       Product: item.product,
-      SKU: item.sku,
+      productSku: item.productSku,
       Description: item.description,
       PurchaseDate: item.purchaseDate,
       Purchase: item.purchase,
-      LotNumber: item.lotNumber,
+      variationValue: item.variationValue,
       Supplier: item.supplier,
       PurchasePrice: item.purchasePrice,
       SellDate: item.sellDate,
@@ -91,7 +110,7 @@ const ItemReport = () => {
     const csv = [
       [
         "Product",
-        "SKU",
+        "productSku",
         "Description",
         "Purchase Date",
         "Purchase",
@@ -119,11 +138,11 @@ const ItemReport = () => {
     const ws = XLSX.utils.json_to_sheet(
       reportItems.map((item) => ({
         Product: item.product,
-        SKU: item.sku,
+        productSku: item.productSku,
         Description: item.description,
         PurchaseDate: item.purchaseDate,
         Purchase: item.purchase,
-        LotNumber: item.lotNumber,
+        variationValue: item.variationValue,
         Supplier: item.supplier,
         PurchasePrice: item.purchasePrice,
         SellDate: item.sellDate,
@@ -146,7 +165,7 @@ const ItemReport = () => {
       head: [
         [
           "Product",
-          "SKU",
+          "productSku",
           "Description",
           "Purchase Date",
           "Purchase",
@@ -164,11 +183,11 @@ const ItemReport = () => {
       ],
       body: reportItems.map((item) => [
         item.product,
-        item.sku,
+        item.productSku,
         item.description,
         item.purchaseDate,
         item.purchase,
-        item.lotNumber,
+        item.variationValue,
         item.supplier,
         item.purchasePrice,
         item.sellDate,
@@ -203,13 +222,13 @@ const ItemReport = () => {
             <thead>
               <tr>
                 ${columnsVisibility.product ? "<th>Product</th>" : ""}
-                ${columnsVisibility.sku ? "<th>SKU</th>" : ""}
+                ${columnsVisibility.productSku ? "<th>productSku</th>" : ""}
                 ${columnsVisibility.description ? "<th>Description</th>" : ""}
                 ${
                   columnsVisibility.purchaseDate ? "<th>Purchase Date</th>" : ""
                 }
                 ${columnsVisibility.purchase ? "<th>Purchase</th>" : ""}
-                ${columnsVisibility.lotNumber ? "<th>Lot Number</th>" : ""}
+                ${columnsVisibility.variationValue ? "<th>Lot Number</th>" : ""}
                 ${columnsVisibility.supplier ? "<th>Supplier</th>" : ""}
                 ${
                   columnsVisibility.purchasePrice
@@ -238,7 +257,7 @@ const ItemReport = () => {
                         ? `<td>${item.product}</td>`
                         : ""
                     }
-                    ${columnsVisibility.sku ? `<td>${item.sku}</td>` : ""}
+                    ${columnsVisibility.productSku ? `<td>${item.productSku}</td>` : ""}
                     ${
                       columnsVisibility.description
                         ? `<td>${item.description}</td>`
@@ -255,8 +274,8 @@ const ItemReport = () => {
                         : ""
                     }
                     ${
-                      columnsVisibility.lotNumber
-                        ? `<td>${item.lotNumber}</td>`
+                      columnsVisibility.variationValue
+                        ? `<td>${item.variationValue}</td>`
                         : ""
                     }
                     ${
@@ -481,13 +500,15 @@ const ItemReport = () => {
                     <thead>
                       <tr>
                         {columnsVisibility.product && <th>Product</th>}
-                        {columnsVisibility.sku && <th>SKU</th>}
+                        {columnsVisibility.variationValue && (
+                          <th>Variation Value</th>
+                        )}
+                        {columnsVisibility.productSku && <th>Sku</th>}
                         {columnsVisibility.description && <th>Description</th>}
                         {columnsVisibility.purchaseDate && (
                           <th>Purchase Date</th>
                         )}
                         {columnsVisibility.purchase && <th>Purchase</th>}
-                        {columnsVisibility.lotNumber && <th>Lot Number</th>}
                         {columnsVisibility.supplier && <th>Supplier</th>}
                         {columnsVisibility.purchasePrice && (
                           <th>Purchase Price</th>
@@ -506,8 +527,20 @@ const ItemReport = () => {
                     <tbody>
                       {reportItems.slice(startIndex, endIndex).map((item) => (
                         <tr key={item.id}>
-                          {columnsVisibility.product && <td>{item.product}</td>}
-                          {columnsVisibility.sku && <td>{item.sku}</td>}
+                          {columnsVisibility.product && (
+                            <td>
+                              {item.productName || item.product}
+                              {item.variationName
+                                ? ` (${item.variationName})`
+                                : ""}
+                            </td>
+                          )}
+                          {columnsVisibility.variationValue && (
+                            <td>{item.variationValue || "-"}</td>
+                          )}
+                          {columnsVisibility.productSku && (
+                            <td>{item.productSku || item.sku}</td>
+                          )}
                           {columnsVisibility.description && (
                             <td>{item.description}</td>
                           )}
@@ -517,9 +550,7 @@ const ItemReport = () => {
                           {columnsVisibility.purchase && (
                             <td>{item.purchase}</td>
                           )}
-                          {columnsVisibility.lotNumber && (
-                            <td>{item.lotNumber}</td>
-                          )}
+
                           {columnsVisibility.supplier && (
                             <td>{item.supplier}</td>
                           )}

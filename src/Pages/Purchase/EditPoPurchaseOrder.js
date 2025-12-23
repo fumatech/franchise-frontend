@@ -398,6 +398,24 @@ function EditPoPurchaseOrder() {
             (1 + (product.profitMargin || 0) / 100)
           ).toFixed(2),
         })),
+        stockTransactions: selectedProducts.map((item) => {
+          const unitSellingPrice =
+            item.defaultPurchasePriceExcTax *
+            (1 - (item.discountPercent || 0) / 100) *
+            (1 + (item.taxRate || 0) / 100) *
+            (1 + (item.profitMargin || 0) / 100);
+
+          return {
+            productId: item.productId,
+            variationId: item.productVariationId,
+            quantity: item.quantity,
+            price: unitSellingPrice, // ✅ SELLING PRICE
+            transactionType: "po_purchase",
+            transactionDate: new Date().toISOString().split("T")[0],
+            note: "Stock updated after PO purchase",
+          };
+        }),
+
         shippingPoDetails: [
           {
             shippingDetails,
