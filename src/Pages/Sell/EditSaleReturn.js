@@ -844,7 +844,7 @@ function EditSaleReturn() {
         date: paidOn,
         paymentAccountId: paymentAccount || null,
         note: note || null,
-        transactionType: "saleReturn",
+        transactionType: "sale_return",
         cardType: cardDetails.cardType || null,
         cardNumber: cardDetails.cardNumber || null,
         cardHolderName: cardDetails.cardHolderName || null,
@@ -854,7 +854,15 @@ function EditSaleReturn() {
             : null,
       },
     ];
-
+    const stockTransactions = purchaseItems.map((item) => ({
+      productId: item.productId,
+      variationId: item.productVariationId || null,
+      price: parseFloat(item.unitSellingPrice), // ✅ CORRECT VALUE
+      quantity: item.quantity,
+      transactionType: "sale_return",
+      date: new Date().toISOString().split("T")[0],
+      note: "Stock updated after sale return",
+    }));
     // Prepare payload with lists
     const payload = {
       orderId: selectedOrderId?.value || "", // Extract the `value` property
@@ -876,6 +884,7 @@ function EditSaleReturn() {
       taxAmount: taxOnSubtotal,
       additionalNotes,
       saleSoItem: purchaseItems,
+      stockTransaction: stockTransactions,
       saleSoPaymentMethod: purchasePoPaymentMethods,
       shippingSaleReturnDetails: shippingAllDetails,
       transaction: [

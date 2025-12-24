@@ -648,7 +648,16 @@ function AddSell() {
       };
     });
 
-    // Create the payload object with the available state variables
+    const stockTransactions = purchaseItems.map((item) => ({
+      productId: item.productId,
+      variationId: item.productVariationId || null,
+      price: parseFloat(item.unitSellingPrice), // ✅ CORRECT VALUE
+      quantity: item.quantity,
+      transactionType: "sale",
+      date: new Date().toISOString().split("T")[0],
+      note: "Stock updated after sale",
+    }));
+
     const payload = {
       customer,
       payTermNumber,
@@ -670,12 +679,14 @@ function AddSell() {
       netTotalUnits: totalUnits,
       deliveryPerson,
       saleItems: purchaseItems,
+      stockTransaction: stockTransactions,
+
       transaction: [
         {
           paymentMethod: paymentMethod,
           amount: parseFloat(amount) || 0,
           date: paidOn,
-          paymentAccountId: paymentAccount || null,
+          paymentAccountId: Number(paymentAccount),
           note: note || null,
           transactionType: "sale",
           cardType: cardDetails.cardType || null,

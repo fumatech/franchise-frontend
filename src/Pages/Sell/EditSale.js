@@ -694,6 +694,15 @@ function EditSale() {
       lineTotal: product.defaultPurchasePriceExcTax * product.quantity,
       unitSellingPrice: product.defaultPurchasePriceExcTax,
     }));
+    const stockTransactions = saleItems.map((item) => ({
+      productId: item.productId,
+      variationId: item.productVariationId || null,
+      price: parseFloat(item.unitSellingPrice), // ✅ CORRECT VALUE
+      quantity: item.quantity,
+      transactionType: "sale",
+      date: new Date().toISOString().split("T")[0],
+      note: "Stock updated after sale",
+    }));
 
     const payload = {
       customer,
@@ -716,12 +725,13 @@ function EditSale() {
       netTotalUnits: totalUnits,
       deliveryPerson,
       saleItems,
+      stockTransaction: stockTransactions,
       transaction: [
         {
           paymentMethod: paymentMethod,
           amount: parseFloat(amount) || 0,
           date: paidOn,
-          paymentAccountId: paymentAccount || null,
+          paymentAccountId: Number(paymentAccount),
           note: note || null,
           transactionType: "sale",
           cardType: cardDetails.cardType || null,

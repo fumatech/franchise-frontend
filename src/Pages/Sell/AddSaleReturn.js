@@ -402,7 +402,7 @@ function AddSaleReturn() {
     // Calculate subtotal from selected products
     const subtotal = selectedProducts.reduce((sum, product) => {
       const unitPrice = parseFloat(product.defaultPurchasePriceExcTax) || 0;
-      const quantity = parseInt(product.quantity) || 0;
+      const quantity = parseInt(product.returnQuantity) || 0;
       const discountPercent = parseFloat(product.discountPercent) || 0;
 
       // Calculate line total after discount
@@ -818,7 +818,7 @@ function AddSaleReturn() {
         productSku: product.sku,
         productVariationId: product.productVariationId,
         productVariationName: product.variationName,
-        quantity: product.quantity,
+        quantity: product.returnQuantity,
         unitCostBeforeDiscount: unitCostBeforeDiscount,
         discountPercent: discountPercent,
         discountAmount: discountAmount,
@@ -832,6 +832,15 @@ function AddSaleReturn() {
       };
     });
 
+    const stockTransactions = purchaseItems.map((item) => ({
+      productId: item.productId,
+      variationId: item.productVariationId || null,
+      price: parseFloat(item.unitSellingPrice), // ✅ CORRECT VALUE
+      quantity: item.quantity,
+      transactionType: "sale_return",
+      date: new Date().toISOString().split("T")[0],
+      note: "Stock updated after sale return",
+    }));
     // Prepare payload with lists
     const payload = {
       orderId: selectedOrderId?.value || "", // Extract the `value` property
@@ -854,16 +863,17 @@ function AddSaleReturn() {
       additionalNotes,
       saleReturnItem: purchaseItems,
       shippingSaleReturnDetails: shippingAllDetails,
+      stockTransaction: stockTransactions,
       transaction: [
         {
           // id: transactionId,
           paymentAccountId: selectedAccount, // Ensure correct PaymentAccount ID is passed
           paymentMethod: paymentMethod,
           amount: parseFloat(amount) || 0,
-          transactionType: "salereturn",
+          transactionType: "sale_return",
 
-          note: note || "",
-          //  date: formattedPaymentDate,
+          note: note || "sale returned ",
+          date: new Date().toISOString().split("T")[0],
           chequeNumber: chequeNumber || null,
           cardType: cardDetails.cardType || null,
           cardNumber: cardDetails.cardNumber || null,
@@ -890,18 +900,6 @@ function AddSaleReturn() {
       );
 
       if (response.status === 200 || response.status === 201) {
-        const status = 3;
-
-        await api.put(
-          `${process.env.REACT_APP_BASE_URL}/purchaseorder/updateStatus/${id}`,
-          { status },
-          {
-            headers: {
-              "Content-Type": "application/json",
-            },
-          }
-        );
-
         alert("Sale return Placed Successfully");
 
         navigate("/ListSellReturn");
@@ -1118,32 +1116,33 @@ function AddSaleReturn() {
                               </thead>
                               <tbody>
                                 {selectedProducts.map((product, index) => {
+                                  const saleQty = Number(product.quantity) || 0; // ORIGINAL SALE QTY
+                                  const returnQty =
+                                    Number(product.returnQuantity) || 0;
+
                                   const unitCostBeforeDiscount =
-                                    parseFloat(
+                                    Number(
                                       product.defaultPurchasePriceExcTax
                                     ) || 0;
-                                  const quantity = product.quantity || 1;
-                                  const discountPercent =
-                                    parseFloat(product.discountPercent) || 0;
 
-                                  // Calculate discount amount
+                                  const discountPercent =
+                                    Number(product.discountPercent) || 0;
+
+                                  // Discount per unit
                                   const discountAmount =
                                     (unitCostBeforeDiscount * discountPercent) /
                                     100;
 
-                                  // Unit cost after discount
                                   const unitCostAfterDiscount =
                                     unitCostBeforeDiscount - discountAmount;
 
-                                  // Subtotal (before tax)
+                                  // Subtotal uses RETURN QTY
                                   const subTotal =
-                                    unitCostAfterDiscount * quantity;
+                                    unitCostAfterDiscount * returnQty;
 
-                                  // Tax calculations
-                                  const taxRate = product.taxRate || 0;
+                                  const taxRate = Number(product.taxRate) || 0;
                                   const taxAmount = subTotal * (taxRate / 100);
 
-                                  // Line total (subtotal + tax)
                                   const lineTotal = subTotal + taxAmount;
 
                                   return (
@@ -1154,26 +1153,30 @@ function AddSaleReturn() {
                                         {product.variationValue &&
                                           ` (${product.variationValue})`}
                                       </td>
-                                      <td>{quantity}</td>
+                                      <td className="text-center">{saleQty}</td>
+                                      {/* RETURN QTY (EDITABLE) */}
                                       <td>
                                         <input
                                           type="number"
-                                          value={product.returnQuantity || 0}
+                                          value={returnQty}
                                           min="0"
-                                          className="no-spinner text-center  px-2"
-                                          max={quantity}
+                                          max={saleQty}
+                                          className="no-spinner text-center px-2"
                                           onChange={(e) => {
-                                            const returnQty =
-                                              parseInt(e.target.value) || 0;
+                                            const value = Math.min(
+                                              Math.max(
+                                                Number(e.target.value) || 0,
+                                                0
+                                              ),
+                                              saleQty
+                                            );
+
                                             setSelectedProducts((prev) =>
                                               prev.map((p) =>
                                                 p.id === product.id
                                                   ? {
                                                       ...p,
-                                                      returnQuantity: Math.min(
-                                                        returnQty,
-                                                        quantity
-                                                      ),
+                                                      returnQuantity: value,
                                                     }
                                                   : p
                                               )

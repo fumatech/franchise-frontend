@@ -11,6 +11,7 @@ import { Link, useNavigate } from "react-router-dom";
 import "jspdf-autotable";
 import * as XLSX from "xlsx";
 import $ from "jquery";
+import axios from "axios";
 
 const StockReport = () => {
   const [inventoryItems, setInventoryItems] = useState([]);
@@ -53,8 +54,8 @@ const StockReport = () => {
               sku: p.sku,
               categoryId: p.category,
               variationName: v.variationName,
-              variationValue: v.variationValue,
-              unitSellingPrice: v.defaultSellingPrice,
+              //variationValue: v.variationValue,
+              // unitSellingPrice: v.defaultSellingPrice,
               defaultPurchasePrice: v.defaultPurchasePriceExcTax,
               margin: v.margin,
             };
@@ -106,18 +107,18 @@ const StockReport = () => {
   });
 
   // ============================ FETCH API ============================
+
   useEffect(() => {
     const fetchInventoryItems = async () => {
       try {
-        const response = await fetch(
+        const response = await axios.get(
           `${process.env.REACT_APP_BASE_URL}/stock-report/report`
         );
 
-        const data = await response.json();
-        console.log(data);
+        console.log(response.data);
 
-        if (Array.isArray(data)) {
-          setInventoryItems(data);
+        if (Array.isArray(response.data)) {
+          setInventoryItems(response.data);
         } else {
           setInventoryItems([]);
         }
