@@ -976,7 +976,7 @@ function ViewSaleReturn() {
                         </div>
                       </div>
                       {/* Reference No */}
-                      <div className="col-md-4">
+                      {/* <div className="col-md-4">
                         <div className="form-group">
                           <label htmlFor="purchaseReferenceNumber">
                             Order Reference No
@@ -996,10 +996,10 @@ function ViewSaleReturn() {
                             readOnly
                           />
                         </div>
-                      </div>
+                      </div> */}
 
                       {/* Reference No */}
-                      <div className="col-md-4">
+                      {/* <div className="col-md-4">
                         <div className="form-group">
                           <label htmlFor="referenceNumber">
                             Reference No<span className="text-danger">*</span>
@@ -1016,10 +1016,10 @@ function ViewSaleReturn() {
                             readOnly
                           />
                         </div>
-                      </div>
+                      </div> */}
 
                       {/* Order By */}
-                      <div className="col-md-4">
+                      {/* <div className="col-md-4">
                         <div className="form-group">
                           <label htmlFor="orderedBy">
                             Ordered By<span className="text-danger">*</span>
@@ -1035,10 +1035,10 @@ function ViewSaleReturn() {
                             readOnly
                           />
                         </div>
-                      </div>
+                      </div> */}
 
                       {/* Added By */}
-                      <div className="col-md-4">
+                      {/* <div className="col-md-4">
                         <div className="form-group">
                           <label htmlFor="addedBy">
                             Added By<span className="text-danger">*</span>
@@ -1055,7 +1055,7 @@ function ViewSaleReturn() {
                             readOnly
                           />
                         </div>
-                      </div>
+                      </div> */}
 
                       {/* Order Date */}
                       {/* <div className="col-md-4">
@@ -1091,7 +1091,7 @@ function ViewSaleReturn() {
                       </div>
 
                       {/* Pay Term */}
-                      <div className="col-md-4">
+                      {/* <div className="col-md-4">
                         <div className="form-group ">
                           <label htmlFor="pay_term_number">Pay term</label>
                           <div className="d-flex">
@@ -1116,10 +1116,10 @@ function ViewSaleReturn() {
                             </select>
                           </div>
                         </div>
-                      </div>
+                      </div> */}
 
                       {/* Location */}
-                      <div className="col-md-4">
+                      {/* <div className="col-md-4">
                         <div className="form-group">
                           <label htmlFor="location">
                             Location<span className="text-danger">*</span>
@@ -1136,9 +1136,9 @@ function ViewSaleReturn() {
                             readOnly
                           />
                         </div>
-                      </div>
+                      </div> */}
 
-                      <div className="col-md-4">
+                      {/* <div className="col-md-4">
                         <div className="form-group">
                           <label htmlFor="document">Attach Document</label>
                           <div className="file-input file-input-new">
@@ -1166,7 +1166,7 @@ function ViewSaleReturn() {
                             <p className="help-block">Max File size: 5MB</p>
                           </div>
                         </div>
-                      </div>
+                      </div> */}
 
                       {/* <div className="col-md-4">
                         <div className="form-group">
@@ -1438,13 +1438,12 @@ function ViewSaleReturn() {
                   </div>
                 </div>
                 {/* Discount Type Section */}
-                <div className="card card-default rounded-4 border-0 cardHover">
+                {/* <div className="card card-default rounded-4 border-0 cardHover">
                   <div className="card-body">
                     <div className="row">
                       <table className="table border-0">
                         <tbody>
                           <tr>
-                            {/* Discount Type Dropdown */}
                             <td className="col-md-3">
                               <div className="form-group">
                                 <label htmlFor="discountType">
@@ -1465,7 +1464,6 @@ function ViewSaleReturn() {
                               </div>
                             </td>
 
-                            {/* Discount Amount Input */}
                             <td className="col-md-3">
                               <div className="form-group">
                                 <label htmlFor="discount_amount">
@@ -1474,7 +1472,6 @@ function ViewSaleReturn() {
                                     : "Discount Amount"}
                                 </label>
 
-                                {/* Conditionally render the input field */}
                                 <input
                                   className="form-control input_number"
                                   required
@@ -1494,7 +1491,6 @@ function ViewSaleReturn() {
                               </div>
                             </td>
 
-                            {/* Calculated Discount */}
                             <td className="col-md-3">
                               <b>Discount</b> (-)
                               <span
@@ -1508,7 +1504,6 @@ function ViewSaleReturn() {
                             </td>
                           </tr>
                           <tr>
-                            {/* Purchase Tax Dropdown */}
                             <td>
                               <div className="col-md-auto">
                                 <div>
@@ -1518,7 +1513,7 @@ function ViewSaleReturn() {
                                     value={
                                       taxOptions.find(
                                         (opt) => opt.value === purchaseTax
-                                      ) || taxOptions[0] // Default to "None"
+                                      ) || taxOptions[0]
                                     }
                                     onChange={handleTaxIdChange}
                                     isDisabled={true}
@@ -1536,7 +1531,6 @@ function ViewSaleReturn() {
 
                             <td>&nbsp;</td>
 
-                            {/* Calculated Tax Amount */}
                             <td>
                               <b>Tax Amount</b> (+)
                               <span
@@ -1547,7 +1541,6 @@ function ViewSaleReturn() {
                               </span>
                             </td>
                           </tr>
-                          {/* Additional Notes */}
                           <tr>
                             <td colSpan="4">
                               <div className="form-group">
@@ -1567,30 +1560,14 @@ function ViewSaleReturn() {
                               </div>
                             </td>
                           </tr>
-                          {/* Total Purchase Amount 
-                          <tr>
-                            <b>Total Purchase Amount</b> (+)
-                            <span
-                              id="total_purchase_amount"
-                              className="display_currency"
-                            >
-                              {totalAmountIncTaxAndDiscount
-                                ? parseFloat(
-                                    totalAmountIncTaxAndDiscount
-                                  ).toFixed(2)
-                                : "0.00"}
-                            </span>
-                          </tr>
-                          
-                          */}
                         </tbody>
                       </table>
                     </div>
                   </div>
-                </div>
+                </div> */}
 
                 {/* shipping details */}
-                <div className="card card-default rounded-4 border-0 cardHover">
+                {/* <div className="card card-default rounded-4 border-0 cardHover">
                   <div className="card-body">
                     <div className="row">
                       <div className="col-md-4">
@@ -1698,7 +1675,7 @@ function ViewSaleReturn() {
                       <label>Purchase Total:{finalPurchaseAmount}</label>
                     </div>
                   </div>
-                </div>
+                </div> */}
 
                 {/* ADD payment */}
                 <div className="card card-default rounded-4 border-0 cardHover">

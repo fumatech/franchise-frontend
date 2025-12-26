@@ -116,7 +116,7 @@ function EditSale() {
         setDeliveredTo(saleData.deliveredTo || "");
         setDeliveryPerson(saleData.deliveryPerson || "");
         setFinalPurchaseAmount(saleData.netTotalAmount || 0);
-        setTotalUnits(saleData.netTotalUnits || 0);
+        setTotalUnits(saleData.netTotalUnit || 0);
 
         // 🧮 Set tax information for main sale
         const matchedSaleTaxOption = taxOptions.find(
@@ -722,7 +722,7 @@ function EditSale() {
       shippingStatus,
       deliveredTo,
       netTotalAmount: finalPurchaseAmount,
-      netTotalUnits: totalUnits,
+      netTotalUnit: totalUnits,
       deliveryPerson,
       saleItems,
       stockTransaction: stockTransactions,

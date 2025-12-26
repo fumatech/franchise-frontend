@@ -15,9 +15,12 @@ import $ from "jquery";
 import { Dropdown, DropdownButton } from "react-bootstrap"; // Make sure you have react-bootstrap installed
 import SellInvoice from "./SellInvoice";
 import api from "../utils/api";
+import axios from "axios";
 
 const AllSell = () => {
   const [sale, setSale] = useState([]);
+  const [paymentAccounts, setPaymentAccounts] = useState([]);
+  const [paymentMethods, setPaymentMethods] = useState([]);
   const [columnsVisibility, setColumnsVisibility] = useState({
     action: true,
     data: true,
@@ -31,6 +34,15 @@ const AllSell = () => {
     sellDue: true,
     totalItem: true,
     addedBy: true,
+  });
+  const [userEmail, setUserEmail] = useState(null);
+  const [userName, setUserName] = useState("");
+  const [paymentData, setPaymentData] = useState({
+    amount: "",
+    method: "",
+    accountId: "",
+    note: "",
+    paidOn: new Date().toISOString().split("T")[0],
   });
 
   const navigate = useNavigate(); // Initialize navigate
@@ -58,14 +70,178 @@ const AllSell = () => {
     taxAmount: "",
   });
   const [showPaymentModal, setShowPaymentModal] = useState(false);
-  const [selectedSale, setSelectedSale] = useState(null);
+  const [selectedSale, setSelectedSale] = useState({
+    transaction: [],
+  });
   const [paymentHistory, setPaymentHistory] = useState([]);
+  const [customers, setCustomers] = useState([]);
+  const [customerMap, setCustomerMap] = useState({});
+
   const [newPayment, setNewPayment] = useState({
     amount: "",
     payment_method: "",
     payment_note: "",
     payment_date: new Date().toISOString().split("T")[0], // Default to today
   });
+  const [accountMap, setAccountMap] = useState({});
+  useEffect(() => {
+    const email = sessionStorage.getItem("userEmail");
+    if (email) {
+      fetch(`https://fusionmastertech.com:8443/user/username?email=${email}`)
+        .then((response) => {
+          if (!response.ok) {
+            throw new Error("User not found");
+          }
+          return response.json();
+        })
+        .then((data) => {
+          if (data) {
+            setUserName(data);
+          }
+        })
+        .catch((error) => {
+          console.error("Error fetching username:", error);
+          // Fallback to using email if username not found
+          setUserName(email.split("@")[0]);
+        });
+    }
+  }, []);
+
+  useEffect(() => {
+    const email = sessionStorage.getItem("userEmail");
+    if (email) {
+      setUserEmail(email);
+    }
+  }, []);
+  useEffect(() => {
+    api
+      .get(`${process.env.REACT_APP_BASE_URL}/payment-account/getall`)
+      .then((res) => {
+        const active = res.data.filter((a) => a.status === 1);
+        setPaymentAccounts(active);
+
+        const map = {};
+        active.forEach((a) => {
+          map[a.id] = a;
+        });
+        setAccountMap(map);
+      });
+  }, []);
+
+  useEffect(() => {
+    axios
+      .get(`${process.env.REACT_APP_BASE_URL}/payment-method/active-names`)
+      .then((response) => {
+        setPaymentMethods(response.data);
+      })
+      .catch((error) => {
+        console.error("Error fetching payment methods:", error);
+      });
+  }, []);
+
+  const handleSubmitPayment = async () => {
+    if (!paymentData.amount || !paymentData.method) {
+      alert("Amount and Payment Method are required");
+      return;
+    }
+
+    const payload = {
+      saleId: selectedSale.id,
+      paymentMethod: paymentData.method,
+      amount: Number(paymentData.amount),
+      paymentAccountId: paymentData.accountId || null,
+      note: paymentData.note,
+      paidOn: paymentData.paidOn,
+      addedBy: userName,
+    };
+
+    try {
+      await api.post(`${process.env.REACT_APP_BASE_URL}/sale/payment`, payload);
+
+      alert("Payment added successfully");
+
+      // Refresh sales
+      const res = await api.get(
+        `${process.env.REACT_APP_BASE_URL}/sale/getall`
+      );
+      setSale(res.data);
+
+      // Reset form
+      setPaymentData({
+        amount: "",
+        method: "",
+        accountId: "",
+        note: "",
+        paidOn: new Date().toISOString().split("T")[0],
+      });
+
+      setShowPaymentModal(false);
+    } catch (err) {
+      console.error(err);
+      alert("Failed to add payment");
+    }
+  };
+
+  useEffect(() => {
+    const fetchCustomers = async () => {
+      try {
+        const res = await api.get(
+          `${process.env.REACT_APP_BASE_URL}/customer/getall`
+        );
+
+        if (Array.isArray(res.data)) {
+          setCustomers(res.data);
+
+          // Create ID → customer map
+          const map = {};
+          res.data.forEach((c) => {
+            map[c.id] = c;
+          });
+          setCustomerMap(map);
+        }
+      } catch (error) {
+        console.error("Error fetching customers", error);
+      }
+    };
+
+    fetchCustomers();
+  }, []);
+  const getCustomerName = (customerId) => {
+    const customer = customerMap[Number(customerId)];
+    if (!customer) return "Unknown Customer";
+    return `${customer.firstName} ${customer.lastName}`;
+  };
+
+  const getCustomerMobile = (customerId) => {
+    const customer = customerMap[Number(customerId)];
+    return customer?.mobileNumber || "-";
+  };
+
+  const getTotalPaid = (sale) => {
+    return Array.isArray(sale.transaction)
+      ? sale.transaction.reduce((sum, tx) => sum + (tx.credit || 0), 0)
+      : 0;
+  };
+  const totalPaid =
+    selectedSale.transaction?.reduce((sum, tx) => sum + (tx.amount || 0), 0) ||
+    0;
+
+  const due = selectedSale.netTotalAmount - totalPaid;
+
+  const getSellDue = (sale) => {
+    const netTotal = sale.netTotalAmount || 0;
+    const paid = getTotalPaid(sale);
+    return Math.max(netTotal - paid, 0);
+  };
+
+  const getPaymentStatus = (sale) => {
+    const paid =
+      sale.transaction?.reduce((sum, t) => sum + (t.amount || 0), 0) || 0;
+
+    if (paid === 0) return "Due";
+    if (paid >= sale.netTotalAmount) return "Paid";
+    return "Partial";
+  };
 
   const handlePaymentStatusClick = (sale) => {
     setSelectedSale(sale);
@@ -218,7 +394,7 @@ const AllSell = () => {
       Data: sales.saleDate,
       InvoiceNo: sales.invoiceNo,
       CustomerName: sales.customer,
-      Location: sales.shippingDetails || "N/A",
+      Location: sales.shippingDetails || "",
       PaymentStatus: sales.shippingStatus,
       PaymentMethod: sales.salePaymentMethod
         .map((pm) => pm.methodName)
@@ -262,7 +438,7 @@ const AllSell = () => {
         Data: sales.saleDate,
         InvoiceNo: sales.invoiceNo,
         CustomerName: sales.customer,
-        Location: sales.shippingDetails || "N/A",
+        Location: sales.shippingDetails || "",
         PaymentStatus: sales.shippingStatus,
         PaymentMethod: sales.salePaymentMethod
           .map((pm) => pm.methodName)
@@ -307,7 +483,7 @@ const AllSell = () => {
       s.saleDate,
       s.invoiceNo,
       s.customer,
-      s.shippingDetails || "N/A",
+      s.shippingDetails || "",
       s.shippingStatus,
       s.salePaymentMethod.map((pm) => pm.methodName).join(", "),
       s.totalAmount,
@@ -418,7 +594,7 @@ const AllSell = () => {
                   }
                   ${
                     columnsVisibility.location
-                      ? `<td>${sales.shippingDetails || "N/A"}</td>`
+                      ? `<td>${sales.shippingDetails || ""}</td>`
                       : ""
                   }
                   ${
@@ -792,57 +968,65 @@ const AllSell = () => {
                               </DropdownButton>
                             </td>
                             {columnsVisibility.data && (
-                              <td>{sales.saleDate || "N/A"}</td>
+                              <td>{sales.saleDate || ""}</td>
                             )}
                             {columnsVisibility.invoiceNo && (
-                              <td>{sales.invoiceNo || "N/A"}</td>
+                              <td>{sales.invoiceNo || ""}</td>
                             )}
                             {columnsVisibility.customerName && (
-                              <td>{sales.customer || "N/A"}</td>
+                              <td>{getCustomerName(sales.customer)}</td>
                             )}
+
                             {columnsVisibility.location && (
-                              <td>{sales.contactNumber || "N/A"}</td>
+                              <td>{getCustomerMobile(sales.customer)}</td>
                             )}
+
                             {columnsVisibility.paymentStatus && (
                               <td
                                 onClick={() => handlePaymentStatusClick(sales)}
                                 style={{ cursor: "pointer" }}
                               >
                                 <span
-                                  className={`badge bg-${getPaymentStatusBadgeClass(sales.shippingStatus)}`}
-                                  style={{
-                                    transition: "all 0.3s ease",
-                                    ":hover": { opacity: 0.8 },
-                                  }}
+                                  className={`badge bg-${getPaymentStatusBadgeClass(
+                                    getPaymentStatus(sales)
+                                  )}`}
                                 >
-                                  {sales.shippingStatus || "N/A"}
+                                  {getPaymentStatus(sales)}
                                 </span>
                               </td>
                             )}
+
                             {columnsVisibility.paymentMethod && (
-                              <td>{sales.paymentMethod || "N/A"}</td>
+                              <td>
+                                {Array.isArray(sales.transaction)
+                                  ? sales.transaction
+                                      .map((tx) => tx.paymentMethod)
+                                      .join(", ")
+                                  : ""}
+                              </td>
                             )}
                             {columnsVisibility.totalAmount && (
-                              <td>{sales.totalAmount || "N/A"}</td>
+                              <td>{sales.netTotalAmount || ""}</td>
                             )}
                             {columnsVisibility.totalPaid && (
                               <td>
-                                {Array.isArray(sales.salePaymentMethod)
-                                  ? sales.salePaymentMethod.reduce(
-                                      (sum, pm) => sum + (pm.amount || 0),
+                                {Array.isArray(sales.transaction)
+                                  ? sales.transaction.reduce(
+                                      (sum, tx) => sum + (tx.credit || 0),
                                       0
                                     )
-                                  : "N/A"}
+                                  : 0}
                               </td>
                             )}
                             {columnsVisibility.sellDue && (
-                              <td>{sales.sellDue || "N/A"}</td>
+                              <td>{getSellDue(sales).toFixed(2)}</td>
                             )}
+
                             {columnsVisibility.totalItem && (
-                              <td>{sales.totalItem || "N/A"}</td>
+                              <td>{sales.netTotalUnit || ""}</td>
                             )}
                             {columnsVisibility.addedBy && (
-                              <td>{sales.addedBy || "N/A"}</td>
+                              <td>{sales.addedBy || ""}</td>
                             )}
                           </tr>
                         ))}
@@ -881,27 +1065,31 @@ const AllSell = () => {
                   <div>
                     <h6 className="text-muted">Date</h6>
                     <p className="font-weight-bold">
-                      {selectedSale.saleDate || "N/A"}
+                      {selectedSale.saleDate || ""}
                     </p>
                   </div>
                   <div>
                     <h6 className="text-muted">Reference No</h6>
                     <p className="font-weight-bold">
-                      {selectedSale.invoiceNo || "N/A"}
+                      {selectedSale.invoiceNo || ""}
                     </p>
                   </div>
                   <div>
                     <h6 className="text-muted">Amount</h6>
                     <p className="font-weight-bold">
-                      ${selectedSale.totalAmount || "0.00"}
+                      ₹{selectedSale.netTotalAmount}
                     </p>
+                  </div>
+                  <div>
+                    <h6 className="text-muted">Due Amount</h6>
+                    <p className="font-weight-bold">{due.toFixed(2)}</p>
                   </div>
                 </div>
 
                 {/* Payment Methods Section */}
                 <div className="card mb-4">
                   <div className="card-header bg-light">
-                    <h6 className="mb-0">Payment Method</h6>
+                    <h6 className="mb-0">Payment History</h6>
                   </div>
                   <div className="card-body p-0">
                     <table className="table table-bordered mb-0">
@@ -913,33 +1101,46 @@ const AllSell = () => {
                         </tr>
                       </thead>
                       <tbody>
-                        {Array.isArray(selectedSale.salePaymentMethod) ? (
-                          selectedSale.salePaymentMethod.map((pm, index) => (
+                        {Array.isArray(selectedSale.transaction) &&
+                        selectedSale.transaction.length > 0 ? (
+                          selectedSale.transaction.map((tx, index) => (
                             <tr key={index}>
-                              <td>{pm.methodName || "N/A"}</td>
-                              <td>{pm.accountName || "N/A"}</td>
-                              <td>${pm.amount || "0.00"}</td>
+                              <td>{tx.paymentMethod}</td>
+                              <td>
+                                {accountMap[tx.paymentAccountId]
+                                  ? `${accountMap[tx.paymentAccountId].accountName} / 
+       ${accountMap[tx.paymentAccountId].accountNumber}`
+                                  : "-"}
+                              </td>
+                              <td>
+                                ₹
+                                {selectedSale.transaction.reduce(
+                                  (sum, tx) => sum + (tx.amount || 0),
+                                  0
+                                )}
+                              </td>
                             </tr>
                           ))
                         ) : (
                           <tr>
                             <td colSpan="3" className="text-center">
-                              No payment methods found
+                              No payment found
                             </td>
                           </tr>
                         )}
                       </tbody>
+
                       <tfoot>
                         <tr className="font-weight-bold">
                           <td colSpan="2" className="text-right">
                             Total Paid:
                           </td>
                           <td>
-                            $
-                            {Array.isArray(selectedSale.salePaymentMethod)
-                              ? selectedSale.salePaymentMethod
+                            ₹
+                            {Array.isArray(selectedSale.transaction)
+                              ? selectedSale.transaction
                                   .reduce(
-                                    (sum, pm) => sum + (pm.amount || 0),
+                                    (sum, tx) => sum + (tx.amount || 0),
                                     0
                                   )
                                   .toFixed(2)
@@ -953,49 +1154,99 @@ const AllSell = () => {
 
                 {/* Payment Notes Section */}
                 <div className="form-group">
-                  <label className="font-weight-bold">Payment Note</label>
+                  <label className="font-weight-bold">Payment Notes</label>
                   <div className="border p-3 bg-light rounded">
-                    {selectedSale.saleNotes || "No notes available"}
+                    {Array.isArray(selectedSale.transaction) &&
+                    selectedSale.transaction.length > 0 ? (
+                      selectedSale.transaction.map((tx, index) => (
+                        <div key={index} className="mb-2">
+                          <strong>Payment {index + 1}:</strong>{" "}
+                          {tx.note || "No note"}
+                        </div>
+                      ))
+                    ) : (
+                      <span>No payment notes available</span>
+                    )}
                   </div>
                 </div>
 
                 {/* Add Payment Section */}
                 <div className="mt-4">
                   <h6 className="font-weight-bold mb-3">Add Payment</h6>
+
                   <div className="row">
+                    {/* Amount */}
                     <div className="col-md-3">
-                      <div className="form-group">
-                        <label>Amount</label>
-                        <input
-                          type="number"
-                          className="form-control"
-                          placeholder="0.00"
-                        />
-                      </div>
+                      <label>Amount *</label>
+                      <input
+                        type="number"
+                        className="form-control"
+                        value={paymentData.amount}
+                        onChange={(e) =>
+                          setPaymentData({
+                            ...paymentData,
+                            amount: e.target.value,
+                          })
+                        }
+                      />
                     </div>
+
+                    {/* Payment Method */}
                     <div className="col-md-3">
-                      <div className="form-group">
-                        <label>Method</label>
-                        <select className="form-control">
-                          <option>Cash</option>
-                          <option>Credit Card</option>
-                          <option>Bank Transfer</option>
-                        </select>
-                      </div>
+                      <label>Method *</label>
+                      <select
+                        className="form-control"
+                        value={paymentData.method}
+                        onChange={(e) =>
+                          setPaymentData({
+                            ...paymentData,
+                            method: e.target.value,
+                          })
+                        }
+                      >
+                        <option value="">Select</option>
+                        {paymentMethods.map((m, i) => (
+                          <option key={i} value={m}>
+                            {m}
+                          </option>
+                        ))}
+                      </select>
                     </div>
+
+                    {/* Payment Account */}
                     <div className="col-md-4">
-                      <div className="form-group">
-                        <label>Note</label>
-                        <input
-                          type="text"
-                          className="form-control"
-                          placeholder="Optional"
-                        />
-                      </div>
+                      <label>Account</label>
+                      <select
+                        className="form-control"
+                        value={paymentData.accountId}
+                        onChange={(e) =>
+                          setPaymentData({
+                            ...paymentData,
+                            accountId: e.target.value,
+                          })
+                        }
+                      >
+                        <option value="">None</option>
+                        {paymentAccounts.map((a) => (
+                          <option key={a.id} value={a.id}>
+                            {a.accountName} / {a.accountNumber}
+                          </option>
+                        ))}
+                      </select>
                     </div>
-                    <div className="col-md-2 d-flex align-items-end">
-                      <button className="btn btn-primary w-100">Add</button>
-                    </div>
+                  </div>
+
+                  {/* Note */}
+                  <div className="mt-3">
+                    <label>Note</label>
+                    <input
+                      type="text"
+                      className="form-control"
+                      value={paymentData.note}
+                      onChange={(e) =>
+                        setPaymentData({ ...paymentData, note: e.target.value })
+                      }
+                    />
                   </div>
                 </div>
               </div>
@@ -1008,8 +1259,12 @@ const AllSell = () => {
                 >
                   Close
                 </button>
-                <button type="button" className="btn btn-primary">
-                  Print Receipt
+                <button
+                  className="btn btn-primary w-80"
+                  disabled={due <= 0}
+                  onClick={handleSubmitPayment}
+                >
+                  Add
                 </button>
               </div>
             </div>

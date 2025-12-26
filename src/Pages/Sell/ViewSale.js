@@ -116,7 +116,7 @@ function ViewSale() {
         setDeliveredTo(saleData.deliveredTo || "");
         setDeliveryPerson(saleData.deliveryPerson || "");
         setFinalPurchaseAmount(saleData.netTotalAmount || 0);
-        setTotalUnits(saleData.netTotalUnits || 0);
+        setTotalUnits(saleData.netTotalUnit || 0);
 
         // 🧮 Set tax information for main sale
         const matchedSaleTaxOption = taxOptions.find(

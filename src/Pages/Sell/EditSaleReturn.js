@@ -12,6 +12,7 @@ function EditSaleReturn() {
   const searchResultsRef = useRef(null);
   const [focusedIndex, setFocusedIndex] = useState(-1);
   const navigate = useNavigate();
+  const [customer, setCustomer] = useState("");
 
   const [orderId, setOrderId] = useState("");
   const [selectedOrderId, setSelectedOrderId] = useState(null);
@@ -270,6 +271,7 @@ function EditSaleReturn() {
         setReferenceNumber(data.referenceNumber);
         setOrderedBy(data.orderedBy);
         setAddedBy(data.addedBy);
+        setCustomer(data.customer);
         // setOrderDate(new Date(data.orderDate));
         setLocation(data.location);
         setAdditionalNotes(data.additionalNotes);
@@ -338,9 +340,9 @@ function EditSaleReturn() {
             (opt) => opt.value == item.taxRate
           );
           return axios
-            .get(`${process.env.REACT_APP_BASE_URL}/product/details`, {
+            .get(`https://fusionmastertech.com:8443/product/details`, {
               params: {
-                productName: item.productName,
+                productId: item.productId,
                 productVariationId: item.productVariationId,
               },
             })
@@ -399,6 +401,7 @@ function EditSaleReturn() {
       .catch((error) => {
         console.error("Error fetching purchase order data:", error);
       });
+    console.log();
   }, [id, taxOptions]);
 
   useEffect(() => {
@@ -869,6 +872,7 @@ function EditSaleReturn() {
       referenceNumber: referenceNumber,
       orderRefernceNumber: purchaseReferenceNumber,
       orderedBy,
+      customer,
       addedBy: userName,
       orderDate,
       saleDate: formattedPurchaseDate,
@@ -984,100 +988,6 @@ function EditSaleReturn() {
                           </div>
                         </div>
                       </div>
-                      {/* Reference No */}
-                      <div className="col-md-4">
-                        <div className="form-group">
-                          <label htmlFor="purchaseReferenceNumber">
-                            Order Reference No
-                            <span className="text-danger">*</span>
-                          </label>
-                          <input
-                            type="text"
-                            className="form-control rounded"
-                            id="purchaseReferenceNumber"
-                            name="purchaseReferenceNumber"
-                            placeholder="Enter here.."
-                            value={purchaseReferenceNumber}
-                            onChange={(e) =>
-                              setPurchaseReferenceNumber(e.target.value)
-                            }
-                            required
-                          />
-                        </div>
-                      </div>
-
-                      {/* Reference No */}
-                      <div className="col-md-4">
-                        <div className="form-group">
-                          <label htmlFor="referenceNumber">
-                            Reference No<span className="text-danger">*</span>
-                          </label>
-                          <input
-                            type="text"
-                            className="form-control rounded"
-                            id="referenceNumber"
-                            name="referenceNumber"
-                            placeholder="Enter here.."
-                            value={referenceNumber}
-                            onChange={(e) => setReferenceNumber(e.target.value)}
-                            required
-                          />
-                        </div>
-                      </div>
-
-                      {/* Order By */}
-                      <div className="col-md-4">
-                        <div className="form-group">
-                          <label htmlFor="orderedBy">
-                            Ordered By<span className="text-danger">*</span>
-                          </label>
-                          <input
-                            type="text"
-                            className="form-control rounded"
-                            id="orderedBy"
-                            name="orderedBy"
-                            value={orderedBy}
-                            onChange={(e) => setOrderedBy(e.target.value)}
-                            required
-                          />
-                        </div>
-                      </div>
-
-                      {/* Added By */}
-                      <div className="col-md-4">
-                        <div className="form-group">
-                          <label htmlFor="addedBy">
-                            Added By<span className="text-danger">*</span>
-                          </label>
-                          <input
-                            type="text"
-                            className="form-control rounded"
-                            id="addedBy"
-                            name="addedBy"
-                            placeholder="Enter here..."
-                            value={userName}
-                            onChange={(e) => setAddedBy(e.target.value)}
-                            required
-                            readOnly
-                          />
-                        </div>
-                      </div>
-
-                      {/* Order Date */}
-                      {/* <div className="col-md-4">
-                        <div className="form-group d-flex flex-row flex-md-column">
-                          <label htmlFor="orderDate">Order Date</label>
-                          <DatePicker
-                            selected={orderDate}
-                            onChange={(date) => setOrderDate(date)}
-                            className="form-control w-100 ms-1 ms-md-0 py-3 rounded-1"
-                            dateFormat="MM/dd/yyyy"
-                            required
-                            minDate={new Date()} // Prevent past dates
-                            popperPlacement="top" // Display the calendar above
-                          />
-                        </div>
-                      </div> */}
 
                       {/* Purchase Date */}
                       <div className="col-md-4">
@@ -1094,92 +1004,6 @@ function EditSaleReturn() {
                           />
                         </div>
                       </div>
-
-                      {/* Pay Term */}
-                      <div className="col-md-4">
-                        <div className="form-group ">
-                          <label htmlFor="pay_term_number">Pay term</label>
-                          <div className="d-flex">
-                            <input
-                              className="form-control rounded-start-1 p-3"
-                              placeholder="Pay term"
-                              type="number"
-                              id="pay_term_number"
-                              value={payTermNumber}
-                              onChange={(e) => setPayTermNumber(e.target.value)}
-                            />
-                            <select
-                              className="form-select border rounded-start-0  rounded-end-1 p-1 "
-                              value={payTermType}
-                              onChange={(e) => setPayTermType(e.target.value)}
-                            >
-                              <option value="">Please Select</option>
-                              <option value="months">Months</option>
-                              <option value="days">Days</option>
-                            </select>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Location */}
-                      <div className="col-md-4">
-                        <div className="form-group">
-                          <label htmlFor="location">
-                            Location<span className="text-danger">*</span>
-                          </label>
-                          <input
-                            type="text"
-                            className="form-control rounded"
-                            id="location"
-                            name="location"
-                            placeholder="Enter here.."
-                            value={location}
-                            onChange={(e) => setLocation(e.target.value)}
-                            required
-                          />
-                        </div>
-                      </div>
-
-                      <div className="col-md-4">
-                        <div className="form-group">
-                          <label htmlFor="document">Attach Document</label>
-                          <div className="file-input file-input-new">
-                            <div className="input-group file-caption-main">
-                              <div className="form-control file-caption kv-fileinput-caption">
-                                <div className="file-caption-name">
-                                  {file ? file.name : "No file chosen"}
-                                </div>
-                              </div>
-                              <div className="input-group-btn">
-                                <div className="btn">
-                                  <i className=""></i>
-                                  &nbsp;
-                                  <input
-                                    id="upload_document"
-                                    accept=".pdf,.csv,.zip,.doc,.docx,.jpeg,.jpg,.png"
-                                    name="document"
-                                    type="file"
-                                    onChange={handleFileChange}
-                                  />
-                                </div>
-                              </div>
-                            </div>
-                            <p className="help-block">Max File size: 5MB</p>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* <div className="col-md-4">
-                        <div className="form-group">
-                          <label htmlFor="document">Attach Document:</label>
-                          <div className="form-control file-caption kv-fileinput-caption">
-                            <div className="file-caption-name">
-                              {"Sample Document: predefined_document.pdf"}
-                            </div>
-                          </div>
-                          <p className="help-block">Max File size: 5MB</p>
-                        </div>
-                      </div> */}
                     </div>
                   </div>
                 </div>
@@ -1429,269 +1253,11 @@ function EditSaleReturn() {
                             </div>
                           </div>
                         )}
-
-                        {/* Form submission and other components can go here */}
                       </div>
                     </div>
                   </div>
                 </div>
-                {/* Discount Type Section */}
-                <div className="card card-default rounded-4 border-0 cardHover">
-                  <div className="card-body">
-                    <div className="row">
-                      <table className="table border-0">
-                        <tbody>
-                          <tr>
-                            {/* Discount Type Dropdown */}
-                            <td className="col-md-3">
-                              <div className="form-group">
-                                <label htmlFor="discountType">
-                                  Discount Type
-                                </label>
-                                <select
-                                  className="form-control select2"
-                                  id="discountType"
-                                  name="discountType"
-                                  value={discountType}
-                                  onChange={handleDiscountTypeChange}
-                                >
-                                  <option value="">None</option>
-                                  <option value="Fixed">Fixed</option>
-                                  <option value="Percentage">Percentage</option>
-                                </select>
-                              </div>
-                            </td>
 
-                            {/* Discount Amount Input */}
-                            <td className="col-md-3">
-                              <div className="form-group">
-                                <label htmlFor="discount_amount">
-                                  {discountType === "percentage"
-                                    ? "Discount Percentage (%)"
-                                    : "Discount Amount"}
-                                </label>
-
-                                {/* Conditionally render the input field */}
-                                <input
-                                  className="form-control input_number"
-                                  required
-                                  name="discount_amount"
-                                  type="text" // Ensure numeric input for better accuracy
-                                  value={discountAmount}
-                                  onChange={handleDiscountAmountChange}
-                                  id="discount_amount"
-                                  disabled={discountType === ""} // Disable if no discount type is selected
-                                  placeholder={
-                                    discountType === "percentage"
-                                      ? "Enter percentage (e.g., 10)"
-                                      : "Enter fixed amount (e.g., 100)"
-                                  }
-                                />
-                              </div>
-                            </td>
-
-                            {/* Calculated Discount */}
-                            <td className="col-md-3">
-                              <b>Discount</b> (-)
-                              <span
-                                id="discount_calculated_amount"
-                                className="display_currency"
-                              >
-                                {discountAmount
-                                  ? parseFloat(discountAmount).toFixed(2)
-                                  : "0.00"}
-                              </span>
-                            </td>
-                          </tr>
-                          <tr>
-                            {/* Purchase Tax Dropdown */}
-                            <td>
-                              <div className="col-md-auto">
-                                <div>
-                                  <label>sale Tax</label>
-                                  <Select
-                                    options={taxOptions}
-                                    value={
-                                      taxOptions.find(
-                                        (opt) => opt.value === purchaseTax
-                                      ) || taxOptions[0] // Default to "None"
-                                    }
-                                    onChange={handleTaxIdChange}
-                                    isClearable={true}
-                                    styles={{
-                                      control: (provided) => ({
-                                        ...provided,
-                                        width: "100%",
-                                      }),
-                                    }}
-                                  />
-                                </div>
-                              </div>
-                            </td>
-
-                            <td>&nbsp;</td>
-
-                            {/* Calculated Tax Amount */}
-                            <td>
-                              <b>Tax Amount</b> (+)
-                              <span
-                                id="tax_calculated_amount"
-                                className="display_currency"
-                              >
-                                {taxOnSubtotal}
-                              </span>
-                            </td>
-                          </tr>
-                          {/* Additional Notes */}
-                          <tr>
-                            <td colSpan="4">
-                              <div className="form-group">
-                                <label htmlFor="additional_notes">
-                                  Additional Notes
-                                </label>
-                                <textarea
-                                  className="form-control"
-                                  rows="3"
-                                  name="additional_notes"
-                                  cols="50"
-                                  id="additional_notes"
-                                  value={additionalNotes}
-                                  onChange={handleAdditionalNotesChange}
-                                />
-                              </div>
-                            </td>
-                          </tr>
-                          {/* Total Purchase Amount 
-                          <tr>
-                            <b>Total Purchase Amount</b> (+)
-                            <span
-                              id="total_purchase_amount"
-                              className="display_currency"
-                            >
-                              {totalAmountIncTaxAndDiscount
-                                ? parseFloat(
-                                    totalAmountIncTaxAndDiscount
-                                  ).toFixed(2)
-                                : "0.00"}
-                            </span>
-                          </tr>
-                          
-                          */}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-                </div>
-
-                {/* shipping details */}
-                <div className="card card-default rounded-4 border-0 cardHover">
-                  <div className="card-body">
-                    <div className="row">
-                      <div className="col-md-4">
-                        <div className="form-group">
-                          <label htmlFor="shippingDetails">
-                            Shipping Details
-                            <span className="text-danger">*</span>
-                          </label>
-                          <input
-                            type="text"
-                            className="form-control rounded"
-                            id="shippingDetails"
-                            name="shippingDetails"
-                            placeholder="Enter here.."
-                            value={shippingDetails}
-                            onChange={(e) => setShippingDetails(e.target.value)}
-                            required
-                          />
-                        </div>
-                      </div>
-                      <div className="col-md-4">
-                        <div className="form-group">
-                          <label htmlFor="shippingCharges">
-                            Additional Shipping Charges
-                            <span className="text-danger">*</span>
-                          </label>
-                          <input
-                            type="number"
-                            className="form-control rounded"
-                            id="shippingCharges"
-                            name="shippingCharges"
-                            placeholder="0"
-                            value={shippingCharges}
-                            onChange={(e) => setShippingCharges(e.target.value)}
-                            required
-                          />
-                        </div>
-                      </div>
-                      <div className="col-md-12 text-center">
-                        <button
-                          type="button"
-                          className="btn"
-                          style={{ backgroundColor: "#0c4461", color: "white" }}
-                          onClick={toggleVisibility}
-                        >
-                          <i className="fas fa-plus"></i> Add additional
-                          expenses{" "}
-                          <i
-                            className={`fas ${
-                              isVisible ? "fa-chevron-up" : "fa-chevron-down"
-                            }`}
-                          ></i>
-                        </button>
-                      </div>
-                      {isVisible && (
-                        <div className="col-md-8 col-md-offset-4">
-                          <table className="table table-bordered add-product-price-table table-condensed ">
-                            <thead>
-                              <tr>
-                                <th>Additional Expense Name</th>
-                                <th>Amount</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {additionalExpenses.map((expense, index) => (
-                                <tr key={index}>
-                                  <td>
-                                    <input
-                                      className="form-control"
-                                      type="text"
-                                      value={expense.name}
-                                      onChange={(e) =>
-                                        handleExpenseChange(
-                                          index,
-                                          "name",
-                                          e.target.value
-                                        )
-                                      }
-                                    />
-                                  </td>
-                                  <td>
-                                    <input
-                                      className="form-control input_number"
-                                      type="text"
-                                      value={expense.amount}
-                                      onChange={(e) =>
-                                        handleExpenseChange(
-                                          index,
-                                          "amount",
-                                          e.target.value
-                                        )
-                                      }
-                                    />
-                                  </td>
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
-                        </div>
-                      )}
-
-                      <label>Purchase Total:{finalPurchaseAmount}</label>
-                    </div>
-                  </div>
-                </div>
-
-                {/* ADD payment */}
                 <div className="card card-default rounded-4 border-0 cardHover">
                   <div className="card-body">
                     <div className="row">
@@ -1702,18 +1268,6 @@ function EditSaleReturn() {
                           <div className="">
                             <div className="py-2 ">
                               <div className="">
-                                {/* <div className="row">
-                                <div className="col-md-12">
-                                  <strong>Advance Balance:</strong>{" "}
-                                  <span id="">0</span>
-                                  <input
-                                    id="advanceBalance"
-                                    data-error-msg="Required advance balance not available"
-                                    name="advanceBalance"
-                                    type="hidden"
-                                  />
-                                </div>
-                              </div> */}
                                 <div className="row">
                                   <input type="hidden" className="" value="0" />
                                   <div className="col-md-4">

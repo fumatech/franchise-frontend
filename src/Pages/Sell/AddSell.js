@@ -676,7 +676,7 @@ function AddSell() {
       shippingStatus,
       deliveredTo,
       netTotalAmount: finalPurchaseAmount,
-      netTotalUnits: totalUnits,
+      netTotalUnit: totalUnits,
       deliveryPerson,
       saleItems: purchaseItems,
       stockTransaction: stockTransactions,

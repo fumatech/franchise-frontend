@@ -64,7 +64,7 @@ const ListSellReturn = () => {
       });
     }
   }, [purchases]);
-
+  const handleAddPayment = (e) => {};
   // Handle filter changes
   const handleFilterChange = (e) => {
     const { name, value } = e.target;
@@ -126,12 +126,12 @@ const ListSellReturn = () => {
         console.log(data);
 
         if (Array.isArray(data)) {
-          const sortedData = data.sort(
-            (a, b) => new Date(b.saleDate) - new Date(a.saleDate)
-          );
-          setPurchases(sortedData); // Update state with fetched data
+          const normalized = data
+            .sort((a, b) => new Date(b.saleDate) - new Date(a.saleDate))
+            .map(normalizeReturn);
+
+          setPurchases(normalized);
         } else {
-          console.error("Fetched data is not an array");
           setPurchases([]);
         }
       } catch (error) {
@@ -152,6 +152,38 @@ const ListSellReturn = () => {
 
     fetchPurchases();
   }, []);
+  const normalizeReturn = (item) => {
+    const transactions = Array.isArray(item.transaction)
+      ? item.transaction
+      : [];
+
+    const totalPaid = transactions.reduce(
+      (sum, tx) => sum + (tx.amount || 0),
+      0
+    );
+
+    const returnDue = Number((item.netTotalAmount - totalPaid).toFixed(2));
+
+    let paymentStatus = "Pending";
+    if (returnDue <= 0) paymentStatus = "Paid";
+    else if (totalPaid > 0) paymentStatus = "Partial";
+
+    return {
+      ...item,
+      invoiceNo: item.referenceNumber,
+      customerName: item.customer || "Walk-in",
+      totalPaid,
+      returnDue,
+      paymentStatus,
+      transaction: transactions,
+    };
+  };
+  const handlePaymentStatusClick = (returnItem) => {
+    setSelectedReturn(returnItem);
+    setPaymentHistory(returnItem.transaction || []);
+    setPaymentAmount(0);
+    setShowPaymentModal(true);
+  };
 
   const handleEditClick = (id) => {
     navigate(`/EditSaleReturn/${id}`);
@@ -183,77 +215,6 @@ const ListSellReturn = () => {
       } catch (error) {
         console.error("Error deleting return:", error);
       }
-    }
-  };
-
-  // Payment related functions
-  const handlePaymentStatusClick = async (returnItem) => {
-    setSelectedReturn(returnItem);
-
-    try {
-      // Fetch payment history for this return
-      const response = await api.get(
-        `${process.env.REACT_APP_BASE_URL}/payments/getByReturn/${returnItem.id}`
-      );
-      setPaymentHistory(response.data || []);
-      setShowPaymentModal(true);
-    } catch (error) {
-      console.error("Error fetching payment history:", error);
-      setPaymentHistory([]);
-      setShowPaymentModal(true);
-    }
-  };
-
-  const handleAddPayment = async () => {
-    if (!selectedReturn || paymentAmount <= 0) return;
-
-    try {
-      const paymentData = {
-        returnId: selectedReturn.id,
-        amount: paymentAmount,
-        date: paymentDate.toISOString().split("T")[0],
-        method: paymentMethod,
-        notes: `Payment for return ${selectedReturn.invoiceNo}`,
-      };
-
-      const response = await api.post(
-        `${process.env.REACT_APP_BASE_URL}/payments/add`,
-        paymentData
-      );
-
-      if (response.status === 201) {
-        // Update the payment history
-        setPaymentHistory([...paymentHistory, response.data]);
-
-        // Update the return's payment status
-        const updatedReturns = purchases.map((returnItem) => {
-          if (returnItem.id === selectedReturn.id) {
-            const newPaidAmount = (returnItem.totalPaid || 0) + paymentAmount;
-            let newStatus = "Pending";
-
-            if (newPaidAmount >= returnItem.netTotalAmount) {
-              newStatus = "Paid";
-            } else if (newPaidAmount > 0) {
-              newStatus = "Partial";
-            }
-
-            return {
-              ...returnItem,
-              totalPaid: newPaidAmount,
-              paymentStatus: newStatus,
-              returnDue: returnItem.netTotalAmount - newPaidAmount,
-            };
-          }
-          return returnItem;
-        });
-
-        setPurchases(updatedReturns);
-        setPaymentAmount(0);
-        alert("Payment added successfully!");
-      }
-    } catch (error) {
-      console.error("Error adding payment:", error);
-      alert("Failed to add payment.");
     }
   };
 
@@ -783,14 +744,10 @@ const ListSellReturn = () => {
                             <td>{returnItem.netTotalAmount}</td>
                           )}
                           {columnsVisibility.totalPaid && (
-                            <td>{returnItem.totalPaid || 0}</td>
+                            <td>{returnItem.totalPaid.toFixed(2)}</td>
                           )}
                           {columnsVisibility.returnDue && (
-                            <td>
-                              {returnItem.returnDue ||
-                                returnItem.netTotalAmount -
-                                  (returnItem.totalPaid || 0)}
-                            </td>
+                            <td>{returnItem.returnDue.toFixed(2)}</td>
                           )}
                           {columnsVisibility.totalItems && (
                             <td>{returnItem.totalItems}</td>
@@ -825,6 +782,8 @@ const ListSellReturn = () => {
         show={showPaymentModal}
         onHide={() => setShowPaymentModal(false)}
         size="lg"
+        backdrop="static" // prevent click outside from closing
+        keyboard={false}
       >
         <Modal.Header closeButton>
           <Modal.Title>
@@ -834,18 +793,15 @@ const ListSellReturn = () => {
         <Modal.Body>
           <div className="row mb-4">
             <div className="col-md-4">
-              <h6>Total Amount: {selectedReturn?.netTotalAmount}</h6>
-            </div>
-            <div className="col-md-4">
-              <h6>Total Paid: {selectedReturn?.totalPaid || 0}</h6>
-            </div>
-            <div className="col-md-4">
               <h6>
-                Due Amount:{" "}
-                {selectedReturn?.returnDue ||
-                  selectedReturn?.netTotalAmount -
-                    (selectedReturn?.totalPaid || 0)}
+                Total Amount: ₹{selectedReturn?.netTotalAmount?.toFixed(2)}
               </h6>
+            </div>
+            <div className="col-md-4">
+              <h6>Total Paid: ₹{selectedReturn?.totalPaid?.toFixed(2)}</h6>
+            </div>
+            <div className="col-md-4">
+              <h6>Due Amount: ₹{selectedReturn?.returnDue?.toFixed(2)}</h6>
             </div>
           </div>
 
@@ -916,16 +872,16 @@ const ListSellReturn = () => {
                   <th>Date</th>
                   <th>Amount</th>
                   <th>Method</th>
-                  <th>Notes</th>
+                  <th>Note</th>
                 </tr>
               </thead>
               <tbody>
-                {paymentHistory.map((payment, index) => (
+                {paymentHistory.map((tx, index) => (
                   <tr key={index}>
-                    <td>{payment.date}</td>
-                    <td>{payment.amount}</td>
-                    <td>{payment.method}</td>
-                    <td>{payment.notes}</td>
+                    <td>{tx.date}</td>
+                    <td>₹{tx.amount.toFixed(2)}</td>
+                    <td>{tx.paymentMethod}</td>
+                    <td>{tx.note || "-"}</td>
                   </tr>
                 ))}
               </tbody>

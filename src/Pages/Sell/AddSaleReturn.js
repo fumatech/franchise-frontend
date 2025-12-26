@@ -37,7 +37,7 @@ function AddSaleReturn() {
   const [purchaseTax, setPurchaseTax] = useState("");
   const [taxAmount, setTaxAmount] = useState("0");
   const [additionalNotes, setAdditionalNotes] = useState("");
-
+  const [customer, setCustomer] = useState("");
   const [isVisible, setIsVisible] = useState(false);
   const [shippingDetails, setShippingDetails] = useState("");
   const [shippingCharges, setShippingCharges] = useState("");
@@ -96,7 +96,35 @@ function AddSaleReturn() {
   const [subtotalAmount, setSubTotalAmount] = useState(0);
   const [taxOnSubtotal, setTaxOnsubtotal] = useState(0);
   const [selectedAccount, setSelectedAccount] = useState("");
+  useEffect(() => {
+    const email = sessionStorage.getItem("userEmail");
+    if (email) {
+      fetch(`${process.env.REACT_APP_BASE_URL}/user/username?email=${email}`)
+        .then((response) => {
+          if (!response.ok) {
+            throw new Error("User not found");
+          }
+          return response.json();
+        })
+        .then((data) => {
+          if (data) {
+            setUserName(data);
+          }
+        })
+        .catch((error) => {
+          console.error("Error fetching username:", error);
+          // Fallback to using email if username not found
+          setUserName(email.split("@")[0]);
+        });
+    }
+  }, []);
 
+  useEffect(() => {
+    const email = sessionStorage.getItem("userEmail");
+    if (email) {
+      setUserEmail(email);
+    }
+  }, []);
   useEffect(() => {
     // Fetch tax rates
     axios
@@ -282,6 +310,7 @@ function AddSaleReturn() {
           // Set header-level details
           // setVendor(data.vendor);
           setReferenceNumber(data.referenceNumber);
+          setCustomer(data.customer);
           setOrderedBy(data.addedBy);
           // setOrderDate(new Date(data.orderDate));
           setLocation(data.location);
@@ -371,23 +400,6 @@ function AddSaleReturn() {
       })
       .catch((error) => console.error("Error fetching order IDs:", error));
     console.log(data.response);
-  }, []);
-  console.log();
-  useEffect(() => {
-    const email = sessionStorage.getItem("userEmail");
-    if (email) {
-      setUserEmail(email);
-
-      // Call the API to get the username based on the email
-      api
-        .get(`${process.env.REACT_APP_BASE_URL}/user/username?email=${email}`)
-        .then((response) => {
-          if (response.data) {
-            setUserName(response.data); // Set the username in state
-          }
-        })
-        .catch((error) => console.error("Error fetching username:", error));
-    }
   }, []);
 
   // Function to calculate total additional expenses
@@ -847,6 +859,7 @@ function AddSaleReturn() {
       referenceNumber: referenceNumber,
       orderRefernceNumber: purchaseReferenceNumber,
       orderedBy,
+      customer,
       addedBy: userName,
       orderDate,
       saleDate: formattedPurchaseDate,
