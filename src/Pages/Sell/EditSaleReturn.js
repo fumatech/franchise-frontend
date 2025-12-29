@@ -190,65 +190,22 @@ function EditSaleReturn() {
     let totalUnits = 0;
 
     selectedProducts.forEach((product) => {
-      const unitCostBeforeDiscount =
-        parseFloat(product.defaultPurchasePriceExcTax) || 0;
-      const discountPercent = parseFloat(product.discountPercent) || 0;
-      const quantity = parseFloat(product.quantity) || 0;
+      const qty = Number(product.returnQty) || 0;
+      const price = Number(product.defaultPurchasePriceExcTax) || 0;
+      const discount = Number(product.discountPercent) || 0;
+      const taxRate = Number(product.taxRate) || 0;
 
-      const unitCostAfterDiscount =
-        unitCostBeforeDiscount * (1 - discountPercent / 100);
-      const lineTotal = unitCostAfterDiscount * quantity;
+      const afterDiscount = price * (1 - discount / 100);
+      const lineTotal = afterDiscount * qty;
+      const taxAmount = (lineTotal * taxRate) / 100;
 
-      const taxRate = parseFloat(product.taxRate) || 0;
-      const taxAmount = (unitCostAfterDiscount * quantity * taxRate) / 100;
-
-      const profitMargin = parseFloat(product.profitMargin) || 0;
-      const profitAmount =
-        unitCostAfterDiscount * quantity * (profitMargin / 100);
-
-      subtotal += lineTotal + taxAmount + profitAmount;
-      totalUnits += quantity;
+      subtotal += lineTotal + taxAmount;
+      totalUnits += qty;
     });
 
-    setSubTotalAmount(subtotal.toFixed(2));
-
-    // Calculate total discount
-    let totalDiscount = 0;
-    const discountValue = parseFloat(discountAmount) || 0;
-
-    if (discountType === "Fixed") {
-      totalDiscount = Math.min(discountValue, subtotal);
-    } else if (discountType === "Percentage") {
-      totalDiscount = (subtotal * discountValue) / 100;
-    }
-
-    // Tax Calculation (apply tax rate to subtotal after discount)
-    const taxAmountOnSubtotal = ((subtotal - totalDiscount) * taxAmount) / 100;
-    setTaxOnsubtotal(taxAmountOnSubtotal);
-
-    // Final Amount Calculation (including discount)
-    const shipping = parseFloat(shippingCharges) || 0;
-    const additionalExpensesTotal = additionalExpenses.reduce(
-      (sum, expense) => sum + (parseFloat(expense.amount) || 0),
-      0
-    );
-
-    const finalAmount =
-      subtotal -
-      totalDiscount +
-      shipping +
-      taxAmountOnSubtotal +
-      additionalExpensesTotal;
-
-    setFinalPurchaseAmount(finalAmount.toFixed(2));
-  }, [
-    selectedProducts,
-    discountType,
-    discountAmount,
-    taxAmount,
-    shippingCharges,
-    additionalExpenses,
-  ]);
+    setFinalPurchaseAmount(subtotal.toFixed(2));
+    setTotalUnits(totalUnits);
+  });
 
   // Add this useEffect to update total units whenever selected products change
   useEffect(() => {
@@ -293,8 +250,8 @@ function EditSaleReturn() {
         if (data.transaction && data.transaction.length > 0) {
           const transaction = data.transaction[0];
           setPaymentMethod(transaction.paymentMethod);
-          setPaidOn(new Date(transaction.date));
-          setAmount(transaction.amount);
+          //  setPaidOn(new Date(transaction.date));
+          //  setAmount(transaction.amount);
           // setPaymentAccount(transaction.paymentAccountId);
           setSelectedAccount(transaction.paymentAccountId);
 
@@ -367,8 +324,8 @@ function EditSaleReturn() {
                 ...item,
                 ...matchedVariation, // Include variation details
                 defaultPurchasePriceExcTax,
-                quantity,
-                updatedQuantity,
+                saleQty: item.quantity, // 🔒 original sale qty
+                returnQty: item.quantity, // ✏️ editable return qty                updatedQuantity,
                 taxRate: matchedTaxOption ? matchedTaxOption.rate : 0,
 
                 discountPercent,
@@ -616,13 +573,13 @@ function EditSaleReturn() {
       if (selectedVars.length > 0) {
         const newProducts = selectedVars.map((variation) => ({
           id: product.id,
-          productId: product.id,
+          productId: product.productId,
           productName: product.productName,
           sku: product.sku,
           variationId: variation.id,
           variationValue: variation.variationValue,
           variationName: variation.variationValue,
-          productVariationId: variation.id,
+          productVariationId: variation.productVariationId,
           defaultPurchasePriceExcTax: variation.defaultPurchasePriceExcTax,
           quantity: 1,
           discountPercent: 0,
@@ -639,7 +596,8 @@ function EditSaleReturn() {
             ...prev,
             {
               id: product.id,
-              productId: product.id,
+              productId: product.productId,
+              productVariationId: product.productVariationId,
               productName: product.productName,
               sku: product.sku,
               quantity: 1,
@@ -739,22 +697,6 @@ function EditSaleReturn() {
     }
   };
 
-  const handleExpenseChange = (index, field, value) => {
-    setAdditionalExpenses((prevExpenses) => {
-      // Create a new array to avoid mutating the original state
-      const updatedExpenses = [...prevExpenses];
-      // Update the specific field for the given index
-      updatedExpenses[index] = {
-        ...updatedExpenses[index],
-        [field]: value,
-      };
-      return updatedExpenses;
-    });
-  };
-  const handleFileChange = (e) => {
-    setFile(e.target.files[0]);
-  };
-
   const toggleVisibility = () => {
     setIsVisible((prev) => !prev);
   };
@@ -816,13 +758,13 @@ function EditSaleReturn() {
 
     // Prepare purchase items as a list
     const purchaseItems = selectedProducts.map((product) => ({
-      productId: product.id,
+      productId: product.productId,
       productName: product.productName,
       productSku: product.sku,
-      productVariationId: product.id,
+      productVariationId: product.productVariationId,
       productVariationName: product.variationName,
-      quantity: product.quantity,
-      updatedQuantity: product.updatedQuantity,
+      quantity: product.returnQty,
+      updatedQuantity: product.returnQty,
       unitCostBeforeDiscount: product.defaultPurchasePriceExcTax,
       discountPercent: product.discountPercent,
       unitCostAfterDiscount:
@@ -1129,6 +1071,7 @@ function EditSaleReturn() {
                             </div>
                           )}
                         </div>
+
                         {selectedProducts.length > 0 && (
                           <div className="table-responsive">
                             <table className="table">
@@ -1136,120 +1079,106 @@ function EditSaleReturn() {
                                 <tr>
                                   <th>#</th>
                                   <th>Product Name</th>
-                                  <th>Sale Quantity</th>
-                                  <th>Unit Cost</th>
+                                  {/* <th>Sale Qty</th> */}
+                                  <th>Return Qty</th>
+                                  <th>Unit Cost Before Disc</th>
+                                  <th>Discount Amount</th>
+                                  <th>Unit Cost After Disc</th>
+                                  <th>Sub Total</th>
                                   <th>Tax Rate</th>
                                   <th>Tax Amount</th>
-                                  <th>Price (Inc. Tax)</th>
                                   <th>Line Total</th>
-                                  <th>Line Total (Inc. Tax)</th>
-                                  <th>Actions</th>
                                 </tr>
                               </thead>
                               <tbody>
                                 {selectedProducts.map((product, index) => {
+                                  const saleQty = Number(product.saleQty) || 0;
+                                  const returnQty =
+                                    Number(product.returnQty) || 0;
+
                                   const unitCostBeforeDiscount =
-                                    parseFloat(
+                                    Number(
                                       product.defaultPurchasePriceExcTax
                                     ) || 0;
-                                  const quantity = product.quantity || 1;
 
-                                  // Line Total (After Quantity and Unit Cost)
-                                  const lineTotal =
-                                    unitCostBeforeDiscount * quantity;
+                                  const discountPercent =
+                                    Number(product.discountPercent) || 0;
 
-                                  // Tax Calculation (Based on Line Total)
-                                  const taxRate = product.taxRate || 0; // Ensure taxRate defaults to 0 if not provided
-                                  const taxAmount =
-                                    lineTotal * (taxRate / 100) || 0;
+                                  // Discount per unit
+                                  const discountAmount =
+                                    (unitCostBeforeDiscount * discountPercent) /
+                                    100;
 
-                                  // Unit Selling Price Including Tax
-                                  const unitSellingPriceIncTax =
-                                    unitCostBeforeDiscount *
-                                      (1 + taxRate / 100) || 0;
+                                  const unitCostAfterDiscount =
+                                    unitCostBeforeDiscount - discountAmount;
 
-                                  // Line Total with Tax
-                                  const lineTotalWithTax =
-                                    parseFloat(lineTotal) +
-                                      parseFloat(taxAmount) || 0;
+                                  // Subtotal uses RETURN QTY
+                                  const subTotal =
+                                    unitCostAfterDiscount * returnQty;
+
+                                  const taxRate = Number(product.taxRate) || 0;
+                                  const taxAmount = subTotal * (taxRate / 100);
+
+                                  const lineTotal = subTotal + taxAmount;
 
                                   return (
                                     <tr key={product.id}>
                                       <td>{index + 1}</td>
                                       <td>
-                                        {product.productName} ({product.sku}) (
-                                        {product.productVariationId}){" "}
-                                        {product.name} {product.variationValue}
+                                        {product.productName} ({product.sku})
+                                        {product.variationValue &&
+                                          ` (${product.variationValue})`}
                                       </td>
+                                      {/* <td className="text-center">{saleQty}</td> */}
+                                      {/* RETURN QTY (EDITABLE) */}
                                       <td>
                                         <input
                                           type="number"
-                                          value={product.quantity}
-                                          min="1"
-                                          onChange={(e) =>
-                                            handleQuantityChange(
-                                              product.id,
-                                              e.target.value
-                                            )
-                                          }
+                                          value={returnQty}
+                                          min="0"
+                                          max={saleQty}
+                                          className="no-spinner text-center px-2"
+                                          onChange={(e) => {
+                                            const value = Math.min(
+                                              Math.max(
+                                                Number(e.target.value) || 0,
+                                                0
+                                              ),
+                                              saleQty // 🚫 cannot exceed sold qty
+                                            );
+
+                                            setSelectedProducts((prev) =>
+                                              prev.map((p) =>
+                                                p.id === product.id
+                                                  ? { ...p, returnQty: value }
+                                                  : p
+                                              )
+                                            );
+                                          }}
                                         />
                                       </td>
                                       <td>
                                         {unitCostBeforeDiscount.toFixed(2)}
                                       </td>
+                                      <td>{discountAmount.toFixed(2)}</td>
                                       <td>
-                                        <Select
-                                          options={taxOptions}
-                                          value={taxOptions.find(
-                                            (opt) =>
-                                              opt.rate === product.taxRate
-                                          )}
-                                          onChange={(selected) =>
-                                            handleTaxRateChange(
-                                              product.id,
-                                              selected
-                                            )
-                                          }
-                                          placeholder="Select Tax"
-                                          isSearchable
-                                          styles={{
-                                            control: (provided) => ({
-                                              ...provided,
-                                              width: "100%",
-                                            }),
-                                          }}
-                                        />
+                                        {unitCostAfterDiscount.toFixed(2)}
                                       </td>
-
+                                      <td>{subTotal.toFixed(2)}</td>
+                                      <td>{taxRate}%</td>
                                       <td>{taxAmount.toFixed(2)}</td>
-                                      <td>
-                                        {unitSellingPriceIncTax.toFixed(2)}
-                                      </td>
                                       <td>{lineTotal.toFixed(2)}</td>
-                                      <td>{lineTotalWithTax.toFixed(2)}</td>
-                                      <td>
-                                        <button
-                                          type="button"
-                                          className="btn btn-danger"
-                                          onClick={() =>
-                                            handleRemoveProduct(product.id)
-                                          }
-                                        >
-                                          <i className="fa fa-trash"></i>
-                                        </button>
-                                      </td>
                                     </tr>
                                   );
                                 })}
                               </tbody>
                             </table>
+                            <div>
+                              Return Total Amount: ₹{finalPurchaseAmount}
+                            </div>
 
-                            {/* Total Amount Calculation */}
-                            <div>Total Amount: ₹{subtotalAmount}</div>
-
-                            {/* Total Units Calculation */}
                             <div className="total-units">
-                              <strong>Total Units:</strong> {totalUnits}
+                              <strong>Total Return Qty:</strong> {totalUnits}
                             </div>
                           </div>
                         )}
@@ -1381,192 +1310,6 @@ function EditSaleReturn() {
                                       </div>
                                     </div>
                                   </div>
-                                  {/* Card Details */}
-                                  {paymentMethod === "card" && (
-                                    <>
-                                      <div className="col-md-4">
-                                        <div className="form-group">
-                                          <label htmlFor="cardNumber">
-                                            Card Number
-                                          </label>
-                                          <input
-                                            className="form-control"
-                                            id="cardNumber"
-                                            name="cardNumber"
-                                            placeholder="Card Number"
-                                            type="text"
-                                            value={cardDetails.cardNumber}
-                                            onChange={handleInputChange}
-                                          />
-                                        </div>
-                                      </div>
-                                      <div className="col-md-4">
-                                        <div className="form-group">
-                                          <label htmlFor="cardHolderName">
-                                            Card holder name
-                                          </label>
-                                          <input
-                                            className="form-control"
-                                            id="cardHolderName"
-                                            name="cardHolderName"
-                                            placeholder="Card holder name"
-                                            type="text"
-                                            value={cardDetails.cardHolderName}
-                                            onChange={handleInputChange}
-                                          />
-                                        </div>
-                                      </div>
-                                      <div className="col-md-4">
-                                        <div className="form-group">
-                                          <label htmlFor="cardTransactionNumber">
-                                            Card Transaction No.
-                                          </label>
-                                          <input
-                                            className="form-control"
-                                            id="cardTransactionNumber"
-                                            name="cardTransactionNumber"
-                                            placeholder="Card Transaction No."
-                                            type="text"
-                                            value={
-                                              cardDetails.cardTransactionNumber
-                                            }
-                                            onChange={handleInputChange}
-                                          />
-                                        </div>
-                                      </div>
-                                      <div className="col-md-3">
-                                        <div className="form-group">
-                                          <label htmlFor="cardType">
-                                            Card Type
-                                          </label>
-                                          <select
-                                            className="form-control"
-                                            id="cardType"
-                                            name="cardType"
-                                            value={cardDetails.cardType}
-                                            onChange={handleInputChange}
-                                          >
-                                            <option value="credit">
-                                              Credit Card
-                                            </option>
-                                            <option value="debit">
-                                              Debit Card
-                                            </option>
-                                            <option value="visa">Visa</option>
-                                            <option value="master">
-                                              MasterCard
-                                            </option>
-                                          </select>
-                                        </div>
-                                      </div>
-                                      <div className="col-md-3">
-                                        <div className="form-group">
-                                          <label htmlFor="cardMonth">
-                                            Month
-                                          </label>
-                                          <input
-                                            className="form-control"
-                                            id="cardMonth"
-                                            name="cardMonth"
-                                            placeholder="Month"
-                                            type="text"
-                                            value={cardDetails.cardMonth}
-                                            onChange={handleInputChange}
-                                          />
-                                        </div>
-                                      </div>
-                                      <div className="col-md-3">
-                                        <div className="form-group">
-                                          <label htmlFor="cardYear">Year</label>
-                                          <input
-                                            className="form-control"
-                                            id="cardYear"
-                                            name="cardYear"
-                                            placeholder="Year"
-                                            type="text"
-                                            value={cardDetails.cardYear}
-                                            onChange={handleInputChange}
-                                          />
-                                        </div>
-                                      </div>
-                                      <div className="col-md-3">
-                                        <div className="form-group">
-                                          <label htmlFor="cardSecurity">
-                                            Security Code
-                                          </label>
-                                          <input
-                                            className="form-control"
-                                            id="cardSecurity"
-                                            name="cardSecurity"
-                                            placeholder="Security Code"
-                                            type="text"
-                                            value={cardDetails.cardSecurity}
-                                            onChange={handleInputChange}
-                                          />
-                                        </div>
-                                      </div>
-                                    </>
-                                  )}
-
-                                  {/* Cheque Details */}
-                                  {paymentMethod === "cheque" && (
-                                    <div className="col-md-12">
-                                      <div className="form-group">
-                                        <label htmlFor="chequeNumber">
-                                          Cheque No.
-                                        </label>
-                                        <input
-                                          className="form-control"
-                                          id="chequeNumber"
-                                          name="chequeNumber"
-                                          placeholder="Cheque No."
-                                          type="text"
-                                          value={chequeNumber}
-                                          onChange={handleInputChange}
-                                        />
-                                      </div>
-                                    </div>
-                                  )}
-
-                                  {/* Bank Transfer Details */}
-                                  {paymentMethod === "t" && (
-                                    <div className="col-md-12">
-                                      <div className="form-group">
-                                        <label htmlFor="bankAccountNumber">
-                                          Bank Account Number
-                                        </label>
-                                        <input
-                                          className="form-control"
-                                          id="bankAccountNumber"
-                                          name="bankAccountNumber"
-                                          placeholder="Bank Account Number"
-                                          type="text"
-                                          value={bankAccountNumber}
-                                          onChange={handleInputChange}
-                                        />
-                                      </div>
-                                    </div>
-                                  )}
-
-                                  {/* Custom Payment Details */}
-                                  {paymentMethod.startsWith("custom_pay") && (
-                                    <div className="col-md-12">
-                                      <div className="form-group">
-                                        <label htmlFor="customTransactionNo">
-                                          Transaction No.
-                                        </label>
-                                        <input
-                                          className="form-control"
-                                          id="customTransactionNo"
-                                          name="customTransactionNo"
-                                          placeholder="Transaction No."
-                                          type="text"
-                                          value={customTransactionNo}
-                                          onChange={handleInputChange}
-                                        />
-                                      </div>
-                                    </div>
-                                  )}
 
                                   <div className="col-md-12">
                                     <div className="form-group">

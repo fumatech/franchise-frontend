@@ -169,10 +169,10 @@ function EditSale() {
         if (saleData.transaction && saleData.transaction.length > 0) {
           const transaction = saleData.transaction[0];
           setPaymentMethod(transaction.paymentMethod || "");
-          setAmount(transaction.amount || 0);
-          setPaidOn(transaction.date ? new Date(transaction.date) : new Date());
+          //setAmount(transaction.amount || 0);
+          // setPaidOn(transaction.date ? new Date(transaction.date) : new Date());
           setSelectedAccount(transaction.paymentAccountId || "");
-          setNote(transaction.note || "");
+          //setNote(transaction.note || "");
         }
       } catch (error) {
         console.error("❌ Error fetching sale data:", error);

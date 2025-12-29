@@ -517,7 +517,7 @@ const ListPurchaseOrder = () => {
                         {columnsVisibility.referenceNumber && (
                           <th>Reference No</th>
                         )}
-                        {columnsVisibility.location && <th>Location</th>}
+                        {/* {columnsVisibility.location && <th>Location</th>} */}
                         {columnsVisibility.vendor && <th>Vendor</th>}
                         {columnsVisibility.totalItems && <th>Total Items</th>}
                         {columnsVisibility.shippedItems && (
@@ -620,14 +620,14 @@ const ListPurchaseOrder = () => {
                             <td>{purchase.orderDate}</td>
                           )}
                           {columnsVisibility.expectedDate && (
-                            <td>{purchase.expectedDate || "Not specified"}</td>
+                            <td>{purchase.deliveryDate || ""}</td>
                           )}
                           {columnsVisibility.referenceNumber && (
                             <td>{purchase.referenceNumber}</td>
                           )}
-                          {columnsVisibility.location && (
+                          {/* {columnsVisibility.location && (
                             <td>{purchase.location}</td>
-                          )}
+                          )} */}
                           {columnsVisibility.vendor && (
                             <td>{purchase.vendor}</td>
                           )}

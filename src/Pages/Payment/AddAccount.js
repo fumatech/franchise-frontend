@@ -63,6 +63,7 @@ const AddAccount = () => {
         {
           accountName: formData.accountName,
           accountType: formData.accountType,
+          status: 1,
           accountNumber: formData.accountNumber,
           transactions: [
             {

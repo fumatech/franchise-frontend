@@ -15,56 +15,336 @@ import * as XLSX from "xlsx";
 import $ from "jquery";
 import { Link, useNavigate } from "react-router-dom";
 import api from "../utils/api";
+import axios from "axios";
 
 const ListSellReturn = () => {
-  const [purchases, setPurchases] = useState([]);
+  const [sale, setSale] = useState([]);
+  const [paymentAccounts, setPaymentAccounts] = useState([]);
+  const [paymentMethods, setPaymentMethods] = useState([]);
   const [columnsVisibility, setColumnsVisibility] = useState({
     action: true,
-    saleDate: true,
+    data: true,
     invoiceNo: true,
     customerName: true,
+    location: true,
     paymentStatus: true,
-    netTotalAmount: true,
+    paymentMethod: true,
+    totalAmount: true,
     totalPaid: true,
-    returnDue: true,
-    totalItems: true,
+    sellDue: true,
+    totalItem: true,
     addedBy: true,
   });
+  const [userEmail, setUserEmail] = useState(null);
+  const [userName, setUserName] = useState("");
+  const [paymentData, setPaymentData] = useState({
+    amount: "",
+    method: "",
+    accountId: "",
+    note: "",
+    paidOn: new Date().toISOString().split("T")[0],
+  });
 
-  // Payment modal state
+  const navigate = useNavigate(); // Initialize navigate
+
+  const [currentPage, setCurrentPage] = useState(1);
+  const [entriesPerPage, setEntriesPerPage] = useState(25);
+  const [formData, setFormData] = useState({
+    customer: "",
+    deliveredTo: "",
+    deliveryPerson: "",
+    discountAmount: "",
+    discountType: "",
+    invoiceNo: "",
+    invoiceScheme: "",
+    orderTax: "",
+    payTermNumber: "",
+    payTermType: "",
+    saleDate: "",
+    saleNotes: "",
+    salePaymentMethod: "",
+    shippingCharges: "",
+    shippingDetails: "",
+    shippingStatus: "",
+    status: "",
+    taxAmount: "",
+  });
   const [showPaymentModal, setShowPaymentModal] = useState(false);
-  const [selectedReturn, setSelectedReturn] = useState(null);
+  const [selectedSale, setSelectedSale] = useState({
+    transaction: [],
+  });
   const [paymentHistory, setPaymentHistory] = useState([]);
-  const [paymentAmount, setPaymentAmount] = useState(0);
-  const [paymentDate, setPaymentDate] = useState(new Date());
-  const [paymentMethod, setPaymentMethod] = useState("cash");
+  const [customers, setCustomers] = useState([]);
+  const [customerMap, setCustomerMap] = useState({});
 
+  const [newPayment, setNewPayment] = useState({
+    amount: "",
+    payment_method: "",
+    payment_note: "",
+    payment_date: new Date().toISOString().split("T")[0], // Default to today
+  });
+  const [accountMap, setAccountMap] = useState({});
+  useEffect(() => {
+    const email = sessionStorage.getItem("userEmail");
+    if (email) {
+      fetch(
+        `https://fusionmastertech.com:8443/customer/username?email=${email}`
+      )
+        .then((response) => {
+          if (!response.ok) {
+            throw new Error("User not found");
+          }
+          return response.json();
+        })
+        .then((data) => {
+          if (data) {
+            setUserName(data);
+          }
+        })
+        .catch((error) => {
+          console.error("Error fetching username:", error);
+          // Fallback to using email if username not found
+          setUserName(email.split("@")[0]);
+        });
+    }
+  }, []);
+
+  useEffect(() => {
+    const email = sessionStorage.getItem("userEmail");
+    if (email) {
+      setUserEmail(email);
+    }
+  }, []);
+  useEffect(() => {
+    api
+      .get(`${process.env.REACT_APP_BASE_URL}/payment-account/getall`)
+      .then((res) => {
+        const active = res.data.filter((a) => a.status === 1);
+        setPaymentAccounts(active);
+
+        const map = {};
+        active.forEach((a) => {
+          map[a.id] = a;
+        });
+        setAccountMap(map);
+      });
+  }, []);
+
+  useEffect(() => {
+    axios
+      .get(`${process.env.REACT_APP_BASE_URL}/payment-method/active-names`)
+      .then((response) => {
+        setPaymentMethods(response.data);
+      })
+      .catch((error) => {
+        console.error("Error fetching payment methods:", error);
+      });
+  }, []);
+
+  const handleSubmitPayment = async () => {
+    if (!paymentData.amount || !paymentData.method || !paymentData.accountId) {
+      alert("Amount, Payment Method, and Account are required");
+      return;
+    }
+
+    const payload = {
+      paymentMethod: paymentData.method,
+      amount: Number(paymentData.amount),
+      transactionType: "sale_return",
+      note: paymentData.note || "",
+      date: paymentData.paidOn,
+      addedBy: userName,
+      saleReturnId: selectedSale.id, // ✅ Use transient ID
+    };
+    console.log(payload);
+
+    try {
+      await api.post(
+        `${process.env.REACT_APP_BASE_URL}/payment-account/${paymentData.accountId}/sale-transaction`,
+        payload
+      );
+
+      // 🔥 REFRESH SELECTED SALE
+      const updatedSale = await api.get(
+        `${process.env.REACT_APP_BASE_URL}/saleReturn/get/${selectedSale.id}`
+      );
+      setSelectedSale(updatedSale.data);
+
+      // Refresh sales list
+      const res = await api.get(
+        `${process.env.REACT_APP_BASE_URL}/saleReturn/getall`
+      );
+      setSale(res.data);
+
+      setPaymentData({
+        amount: "",
+        method: "",
+        accountId: "",
+        note: "",
+        paidOn: new Date().toISOString().split("T")[0],
+      });
+
+      alert("Payment added successfully");
+    } catch (err) {
+      console.error(err);
+      alert("Failed to add payment");
+    }
+  };
+
+  useEffect(() => {
+    const fetchCustomers = async () => {
+      try {
+        const res = await api.get(
+          `${process.env.REACT_APP_BASE_URL}/customer/getall`
+        );
+
+        if (Array.isArray(res.data)) {
+          setCustomers(res.data);
+
+          // Create ID → customer map
+          const map = {};
+          res.data.forEach((c) => {
+            map[c.id] = c;
+          });
+          setCustomerMap(map);
+        }
+      } catch (error) {
+        console.error("Error fetching customers", error);
+      }
+    };
+
+    fetchCustomers();
+  }, []);
+  const getCustomerName = (customerId) => {
+    const customer = customerMap[Number(customerId)];
+    if (!customer) return "Unknown Customer";
+    return `${customer.firstName} ${customer.lastName}`;
+  };
+
+  const getCustomerMobile = (customerId) => {
+    const customer = customerMap[Number(customerId)];
+    return customer?.mobileNumber || "-";
+  };
+
+  const getTotalPaid = (sale) => {
+    return Array.isArray(sale.transaction)
+      ? sale.transaction.reduce((sum, tx) => sum + (tx.credit || 0), 0)
+      : 0;
+  };
+  const totalPaid =
+    selectedSale.transaction?.reduce((sum, tx) => sum + (tx.amount || 0), 0) ||
+    0;
+
+  // ================= SALE RETURN HELPERS =================
+
+  // Total refunded amount
+  function getTotalRefunded(saleReturn) {
+    return Array.isArray(saleReturn?.transaction)
+      ? saleReturn.transaction.reduce((sum, tx) => sum + (tx.debit || 0), 0)
+      : 0;
+  }
+
+  // Due refund amount
+  function getRefundDue(saleReturn) {
+    const total = saleReturn?.netTotalAmount || 0;
+    const refunded = getTotalRefunded(saleReturn);
+    return Math.max(total - refunded, 0);
+  }
+
+  // Refund payment status
+  function getRefundStatus(saleReturn) {
+    const refunded = getTotalRefunded(saleReturn);
+    const total = saleReturn?.netTotalAmount || 0;
+
+    if (refunded === 0) return "Due";
+    if (refunded >= total) return "Paid";
+    return "Partial";
+  }
+  const totalRefunded = getTotalRefunded(selectedSale);
+  const due = getRefundDue(selectedSale);
+
+  const getSellDue = (sale) => {
+    const netTotal = sale.netTotalAmount || 0;
+    const paid = getTotalPaid(sale);
+    return Math.max(netTotal - paid, 0);
+  };
+
+  const getPaymentStatus = (sale) => {
+    const paid =
+      sale.transaction?.reduce((sum, t) => sum + (t.amount || 0), 0) || 0;
+
+    if (paid === 0) return "Due";
+    if (paid >= sale.netTotalAmount) return "Paid";
+    return "Partial";
+  };
+
+  const handlePaymentStatusClick = (sale) => {
+    setSelectedSale(sale);
+    setShowPaymentModal(true);
+  };
+  const getPaymentStatusBadgeClass = (status) => {
+    switch (status) {
+      case "Paid":
+        return "success"; // Green badge
+      case "Due":
+        return "danger"; // Red badge
+      case "Partial":
+        return "warning text-dark"; // Yellow badge
+      default:
+        return "primary"; // Blue badge
+    }
+  };
   // Add these new states for filters
+
   const [filterCollapsed, setFilterCollapsed] = useState(true);
   const [filterValues, setFilterValues] = useState({
+    locations: [],
+    paymentStatuses: [],
+    saleStatuses: [],
     customers: [],
-    paymentStatuses: ["Paid", "Pending", "Partial"],
-  });
-  const [activeFilters, setActiveFilters] = useState({
-    customer: "",
-    paymentStatus: "",
-    dateRange: "",
   });
 
-  // Extract filter values when purchases data changes
+  const [activeFilters, setActiveFilters] = useState({
+    location: "",
+    saleStatus: "",
+    paymentStatus: "",
+    startDate: null,
+    endDate: null,
+  });
+
   useEffect(() => {
-    if (purchases.length > 0) {
+    if (sale.length > 0) {
+      const locations = [...new Set(sale.map((i) => i.shippingDetails))].filter(
+        Boolean
+      );
+
+      const paymentStatuses = [
+        ...new Set(
+          sale.map((item) => {
+            if (item.sellDue === 0) return "Paid";
+            if (item.sellDue === item.totalAmount) return "Due";
+            if (item.sellDue > 0 && item.sellDue < item.totalAmount)
+              return "Partial";
+            return null;
+          })
+        ),
+      ].filter(Boolean);
+
       const customers = [
-        ...new Set(purchases.map((item) => item.customerName)),
+        ...new Set(sale.map((item) => getCustomerName(item.customer))),
       ].filter(Boolean);
 
       setFilterValues({
+        locations,
+        paymentStatuses,
+        saleStatuses: [...new Set(sale.map((i) => i.shippingStatus))].filter(
+          Boolean
+        ),
         customers,
-        paymentStatuses: ["Paid", "Pending", "Partial"],
       });
     }
-  }, [purchases]);
-  const handleAddPayment = (e) => {};
+  }, [sale]);
+
   // Handle filter changes
   const handleFilterChange = (e) => {
     const { name, value } = e.target;
@@ -78,148 +358,80 @@ const ListSellReturn = () => {
   // Reset all filters
   const resetFilters = () => {
     setActiveFilters({
-      customer: "",
+      location: "",
+      saleStatus: "",
       paymentStatus: "",
       dateRange: "",
     });
   };
 
-  // Filter the purchases based on active filters
-  const filteredPurchases = purchases.filter((purchase) => {
-    // Customer filter
+  // Filter the sales based on active filters
+  const filteredSales = sale.filter((saleItem) => {
+    // Location filter
     if (
-      activeFilters.customer &&
-      purchase.customerName !== activeFilters.customer
+      activeFilters.location &&
+      saleItem.shippingDetails !== activeFilters.location
+    ) {
+      return false;
+    }
+
+    // Sale Status filter
+    if (
+      activeFilters.saleStatus &&
+      saleItem.shippingStatus !== activeFilters.saleStatus
     ) {
       return false;
     }
 
     // Payment Status filter
-    if (
-      activeFilters.paymentStatus &&
-      purchase.paymentStatus !== activeFilters.paymentStatus
-    ) {
-      return false;
+    if (activeFilters.paymentStatus) {
+      let paymentStatus;
+      if (saleItem.sellDue === 0) paymentStatus = "Paid";
+      else if (saleItem.sellDue === saleItem.totalAmount) paymentStatus = "Due";
+      else if (saleItem.sellDue > 0 && saleItem.sellDue < saleItem.totalAmount)
+        paymentStatus = "Partial";
+      else paymentStatus = "Unknown";
+
+      if (paymentStatus !== activeFilters.paymentStatus) {
+        return false;
+      }
     }
 
-    // Date range filter
+    // Date range filter (you'll need to implement this based on your date format)
     if (activeFilters.dateRange) {
-      // Implement date range filtering based on your data structure
+      // Add your date range filtering logic here
+      // Example: Check if saleItem.saleDate falls within the selected range
     }
 
     return true;
   });
 
-  const navigate = useNavigate();
-
-  const [currentPage, setCurrentPage] = useState(1);
-  const [entriesPerPage, setEntriesPerPage] = useState(25);
-
   useEffect(() => {
-    const fetchPurchases = async () => {
+    const fetchAllSell = async () => {
       try {
         const response = await api.get(
           `${process.env.REACT_APP_BASE_URL}/saleReturn/getall`
         );
 
         const data = response.data;
-        console.log(data);
+        console.log(data); // Log the fetched data
 
         if (Array.isArray(data)) {
-          const normalized = data
-            .sort((a, b) => new Date(b.saleDate) - new Date(a.saleDate))
-            .map(normalizeReturn);
-
-          setPurchases(normalized);
+          setSale(data); // If it's an array, set it as state
         } else {
-          setPurchases([]);
+          console.error("Fetched data is not an array");
+          setSale([]); // In case it's not an array, set sale to an empty array
         }
       } catch (error) {
-        console.error("Error fetching purchases:", error);
-        setPurchases([]);
+        console.error("Error fetching sale:", error);
+        setSale([]); // Handle errors by setting sale to an empty array
       }
-
-      // Dynamically load the script
-      const script = document.createElement("script");
-      script.src = "js/JqueryContent.js";
-      script.async = true;
-      document.body.appendChild(script);
-
-      return () => {
-        document.body.removeChild(script);
-      };
     };
 
-    fetchPurchases();
+    fetchAllSell();
   }, []);
-  const normalizeReturn = (item) => {
-    const transactions = Array.isArray(item.transaction)
-      ? item.transaction
-      : [];
-
-    const totalPaid = transactions.reduce(
-      (sum, tx) => sum + (tx.amount || 0),
-      0
-    );
-
-    const returnDue = Number((item.netTotalAmount - totalPaid).toFixed(2));
-
-    let paymentStatus = "Pending";
-    if (returnDue <= 0) paymentStatus = "Paid";
-    else if (totalPaid > 0) paymentStatus = "Partial";
-
-    return {
-      ...item,
-      invoiceNo: item.referenceNumber,
-      customerName: item.customer || "Walk-in",
-      totalPaid,
-      returnDue,
-      paymentStatus,
-      transaction: transactions,
-    };
-  };
-  const handlePaymentStatusClick = (returnItem) => {
-    setSelectedReturn(returnItem);
-    setPaymentHistory(returnItem.transaction || []);
-    setPaymentAmount(0);
-    setShowPaymentModal(true);
-  };
-
-  const handleEditClick = (id) => {
-    navigate(`/EditSaleReturn/${id}`);
-  };
-  const handleViewClick = (id) => {
-    navigate(`/ViewSaleReturn/${id}`);
-  };
-
-  const handleDeleteClick = async (id) => {
-    if (
-      window.confirm(
-        "Are you sure you want to delete this return? This will update the stock."
-      )
-    ) {
-      try {
-        const response = await api.delete(
-          `${process.env.REACT_APP_BASE_URL}/saleReturn/delete/${id}`
-        );
-
-        if (response.status === 204) {
-          // Update stock and account here if needed
-          setPurchases((prevPurchases) =>
-            prevPurchases.filter((purchase) => purchase.id !== id)
-          );
-          alert("Return deleted successfully and stock updated!");
-        } else {
-          alert("Failed to delete return.");
-        }
-      } catch (error) {
-        console.error("Error deleting return:", error);
-      }
-    }
-  };
-
   const exportCSV = () => {
-    const csvData = purchases.map((purchase) => ({
+    const csvData = sale.map((purchase) => ({
       "Return Date": purchase.saleDate,
       "Invoice No": purchase.invoiceNo,
       "Customer Name": purchase.customerName,
@@ -246,7 +458,7 @@ const ListSellReturn = () => {
 
   const exportExcel = () => {
     const ws = XLSX.utils.json_to_sheet(
-      purchases.map((purchase) => ({
+      sale.map((purchase) => ({
         "Return Date": purchase.saleDate,
         "Invoice No": purchase.invoiceNo,
         "Customer Name": purchase.customerName,
@@ -282,7 +494,7 @@ const ListSellReturn = () => {
     ];
 
     // Map through the return data and prepare the body
-    const body = purchases.map((p) => [
+    const body = sale.map((p) => [
       p.saleDate,
       p.invoiceNo,
       p.customerName,
@@ -365,7 +577,7 @@ const ListSellReturn = () => {
               </tr>
             </thead>
             <tbody>
-              ${purchases
+              ${sale
                 .map(
                   (purchase) => `
                 <tr>
@@ -437,8 +649,32 @@ const ListSellReturn = () => {
 
   const startIndex = (currentPage - 1) * entriesPerPage;
   const endIndex = startIndex + entriesPerPage;
-  const currentReturns = filteredPurchases.slice(startIndex, endIndex);
 
+  // const currentReturns = filteredPurchases.slice(startIndex, endIndex);
+  const handleEditClick = (id) => {
+    navigate(`/EditSaleReturn/${id}`);
+  };
+  const handleDeleteClick = async (id) => {
+    if (window.confirm("Are you sure you want to delete this sale return?")) {
+      try {
+        const response = await api.delete(
+          `${process.env.REACT_APP_BASE_URL}/saleReturn/delete/${id}`
+        );
+
+        if (response.status === 204) {
+          setSale((prevSale) => prevSale.filter((sale) => sale.id !== id));
+          alert("Sale Return deleted successfully!");
+        } else {
+          alert("Failed to delete sale return.");
+        }
+      } catch (error) {
+        console.error("Error deleting sale return:", error);
+      }
+    }
+  };
+  const handleViewClick = (id) => {
+    navigate(`/ViewSaleReturn/${id}`);
+  };
   return (
     <div className="wrapper">
       <div className="content-wrapper">
@@ -659,117 +895,159 @@ const ListSellReturn = () => {
                   >
                     <thead>
                       <tr>
-                        {columnsVisibility.action && <th>Action</th>}
-                        {columnsVisibility.saleDate && <th>Return Date</th>}
+                        {columnsVisibility.action && <th>Actions</th>}
+                        {columnsVisibility.data && <th>Return Date</th>}
                         {columnsVisibility.invoiceNo && <th>Invoice No</th>}
-                        {columnsVisibility.customerName && <th>Customer</th>}
+                        {columnsVisibility.customerName && (
+                          <th>Customer Name</th>
+                        )}
+                        {columnsVisibility.location && <th>Contact Number</th>}
                         {columnsVisibility.paymentStatus && (
                           <th>Payment Status</th>
                         )}
-                        {columnsVisibility.netTotalAmount && (
-                          <th>Total Amount</th>
+                        {columnsVisibility.paymentMethod && (
+                          <th>Payment Method</th>
                         )}
+                        {columnsVisibility.totalAmount && <th>Total Amount</th>}
                         {columnsVisibility.totalPaid && <th>Total Paid</th>}
-                        {columnsVisibility.returnDue && <th>Return Due</th>}
-                        {columnsVisibility.totalItems && <th>Total Items</th>}
+                        {columnsVisibility.sellDue && <th>Sell Due</th>}
+                        {columnsVisibility.totalItem && <th>Total Item</th>}
                         {columnsVisibility.addedBy && <th>Added By</th>}
                       </tr>
                     </thead>
                     <tbody>
-                      {currentReturns.map((returnItem) => (
-                        <tr key={returnItem.id}>
-                          {columnsVisibility.action && (
-                            <td>
-                              <DropdownButton
-                                id="dropdown-basic-button"
-                                title="Actions"
-                                variant="outline-success rounded-5 fs-6 fw-light border-1"
-                                className="custom-outline-dropdown p-2"
-                              >
-                                <Dropdown.Item
-                                  as="button"
-                                  onClick={() => handleViewClick(returnItem.id)}
+                      {Array.isArray(filteredSales) &&
+                        filteredSales
+                          .slice(startIndex, endIndex)
+                          .map((sales) => (
+                            <tr key={sales.id || "default-id"}>
+                              <td>
+                                {/* DropdownButton for Actions */}
+                                <DropdownButton
+                                  id="dropdown-basic-button" // Unique ID for the dropdown
+                                  title="Actions" // Title displayed on the button
+                                  variant="outline-success rounded-5 fs-6 fw-light border-1" // Styling for the button
+                                  className="custom-outline-dropdown p-2" // Additional custom styling
                                 >
-                                  <div className="d-inline-block w-75 btn-edit justify-content-center text-secondary">
-                                    <i className="dropdown_hover fa-solid fa-pen-to-square me-3"></i>
-                                    <span>View</span>
-                                  </div>
-                                </Dropdown.Item>
-                                <Dropdown.Item
-                                  as="button"
-                                  onClick={() => handleEditClick(returnItem.id)}
-                                >
-                                  <div className="d-inline-block w-75 btn-edit justify-content-center text-secondary">
-                                    <i className="dropdown_hover fa-solid fa-pen-to-square me-3"></i>
-                                    <span>Edit</span>
-                                  </div>
-                                </Dropdown.Item>
+                                  {/* Dropdown Items */}
+                                  <>
+                                    {/* View Action */}
+                                    <Dropdown.Item
+                                      as="button" // Render as a button
+                                      onClick={() => handleViewClick(sales.id)} // Trigger handleViewClick with sales.id
+                                    >
+                                      <div className="d-inline-block w-100 btn-view justify-content-center text-secondary">
+                                        {/* Icon for View */}
+                                        <i className="dropdown_hover fa fa-eye me-3"></i>
+                                        {/* Text for View */}
+                                        <span>View</span>
+                                      </div>
+                                    </Dropdown.Item>
 
-                                <Dropdown.Item
-                                  as="button"
+                                    {/* Edit Action */}
+                                    <Dropdown.Item
+                                      as="button" // Render as a button
+                                      onClick={() => handleEditClick(sales.id)} // Trigger handleEditClick with sales.id
+                                    >
+                                      <div className="d-inline-block w-100 btn-edit justify-content-center text-secondary">
+                                        {/* Icon for Edit */}
+                                        <i className="dropdown_hover fa-solid fa-pen-to-square me-3"></i>
+                                        {/* Text for Edit */}
+                                        <span>Edit</span>
+                                      </div>
+                                    </Dropdown.Item>
+
+                                    {/* Delete Action */}
+                                    <Dropdown.Item
+                                      as="button" // Render as a button
+                                      onClick={() =>
+                                        handleDeleteClick(sales.id)
+                                      } // Trigger handleDeleteClick with sales.id
+                                    >
+                                      <div className="d-inline-block w-100 btn-delete justify-content-center text-secondary">
+                                        {/* Icon for Delete */}
+                                        <i className="fa fa-trash me-3"></i>
+                                        {/* Text for Delete */}
+                                        <span>Delete</span>
+                                      </div>
+                                    </Dropdown.Item>
+                                  </>
+                                </DropdownButton>
+                              </td>
+                              {columnsVisibility.data && (
+                                <td>{sales.saleDate || ""}</td>
+                              )}
+                              {columnsVisibility.invoiceNo && (
+                                <td>{sales.referenceNumber || ""}</td>
+                              )}
+                              {columnsVisibility.customerName && (
+                                <td>{getCustomerName(sales.customer)}</td>
+                              )}
+
+                              {columnsVisibility.location && (
+                                <td>{getCustomerMobile(sales.customer)}</td>
+                              )}
+
+                              {columnsVisibility.paymentStatus && (
+                                <td
                                   onClick={() =>
-                                    handleDeleteClick(returnItem.id)
+                                    handlePaymentStatusClick(sales)
                                   }
+                                  style={{ cursor: "pointer" }}
                                 >
-                                  <div className="d-inline-block w-75 btn-delete justify-content-center text-secondary">
-                                    <i className="fa fa-trash me-3"></i>
-                                    <span>Delete</span>
-                                  </div>
-                                </Dropdown.Item>
-                              </DropdownButton>
-                            </td>
-                          )}
-                          {columnsVisibility.saleDate && (
-                            <td>{returnItem.saleDate}</td>
-                          )}
-                          {columnsVisibility.invoiceNo && (
-                            <td>{returnItem.invoiceNo}</td>
-                          )}
-                          {columnsVisibility.customerName && (
-                            <td>{returnItem.customerName}</td>
-                          )}
-                          {columnsVisibility.paymentStatus && (
-                            <td>
-                              <button
-                                className="btn btn-link p-0"
-                                onClick={() =>
-                                  handlePaymentStatusClick(returnItem)
-                                }
-                              >
-                                {returnItem.paymentStatus}
-                              </button>
-                            </td>
-                          )}
-                          {columnsVisibility.netTotalAmount && (
-                            <td>{returnItem.netTotalAmount}</td>
-                          )}
-                          {columnsVisibility.totalPaid && (
-                            <td>{returnItem.totalPaid.toFixed(2)}</td>
-                          )}
-                          {columnsVisibility.returnDue && (
-                            <td>{returnItem.returnDue.toFixed(2)}</td>
-                          )}
-                          {columnsVisibility.totalItems && (
-                            <td>{returnItem.totalItems}</td>
-                          )}
-                          {columnsVisibility.addedBy && (
-                            <td>{returnItem.addedBy}</td>
-                          )}
-                        </tr>
-                      ))}
+                                  <span
+                                    className={`badge bg-${getPaymentStatusBadgeClass(
+                                      getPaymentStatus(sales)
+                                    )}`}
+                                  >
+                                    {getPaymentStatus(sales)}
+                                  </span>
+                                </td>
+                              )}
+                              {columnsVisibility.paymentMethod && (
+                                <td>
+                                  {Array.isArray(sales.transaction) &&
+                                  sales.transaction.length > 0
+                                    ? (() => {
+                                        const methods = sales.transaction.map(
+                                          (tx) => tx.paymentMethod
+                                        );
+                                        const uniqueMethods = [
+                                          ...new Set(methods),
+                                        ]; // remove duplicates
+                                        return uniqueMethods.join(", ");
+                                      })()
+                                    : ""}
+                                </td>
+                              )}
+
+                              {columnsVisibility.totalAmount && (
+                                <td>{sales.netTotalAmount || ""}</td>
+                              )}
+                              {columnsVisibility.totalPaid && (
+                                <td>
+                                  {Array.isArray(sales.transaction)
+                                    ? sales.transaction.reduce(
+                                        (sum, tx) => sum + (tx.amount || 0),
+                                        0
+                                      )
+                                    : 0}
+                                </td>
+                              )}
+                              {columnsVisibility.sellDue && (
+                                <td>{getRefundDue(sales).toFixed(2)}</td>
+                              )}
+
+                              {columnsVisibility.totalItem && (
+                                <td>{sales.totalItems || ""}</td>
+                              )}
+                              {columnsVisibility.addedBy && (
+                                <td>{sales.addedBy || ""}</td>
+                              )}
+                            </tr>
+                          ))}
                     </tbody>
                   </table>
-                </div>
-
-                {/* Pagination */}
-                <div className="row ">
-                  <div className="col-sm-12 col-md-5">
-                    <div className="dataTables_info">
-                      Showing {startIndex + 1} to{" "}
-                      {Math.min(endIndex, filteredPurchases.length)} of{" "}
-                      {filteredPurchases.length} entries
-                    </div>
-                  </div>
                 </div>
               </div>
             </div>
@@ -777,128 +1055,243 @@ const ListSellReturn = () => {
         </section>
       </div>
 
-      {/* Payment Modal */}
-      <Modal
-        show={showPaymentModal}
-        onHide={() => setShowPaymentModal(false)}
-        size="lg"
-        backdrop="static" // prevent click outside from closing
-        keyboard={false}
-      >
-        <Modal.Header closeButton>
-          <Modal.Title>
-            Payment Details - {selectedReturn?.invoiceNo}
-          </Modal.Title>
-        </Modal.Header>
-        <Modal.Body>
-          <div className="row mb-4">
-            <div className="col-md-4">
-              <h6>
-                Total Amount: ₹{selectedReturn?.netTotalAmount?.toFixed(2)}
-              </h6>
-            </div>
-            <div className="col-md-4">
-              <h6>Total Paid: ₹{selectedReturn?.totalPaid?.toFixed(2)}</h6>
-            </div>
-            <div className="col-md-4">
-              <h6>Due Amount: ₹{selectedReturn?.returnDue?.toFixed(2)}</h6>
-            </div>
-          </div>
-
-          <div className="row mb-4">
-            <div className="col-md-4">
-              <div className="form-group">
-                <label>Payment Amount</label>
-                <input
-                  type="number"
-                  className="form-control"
-                  value={paymentAmount}
-                  onChange={(e) => setPaymentAmount(Number(e.target.value))}
-                  max={
-                    selectedReturn?.returnDue ||
-                    selectedReturn?.netTotalAmount -
-                      (selectedReturn?.totalPaid || 0)
-                  }
-                />
-              </div>
-            </div>
-            <div className="col-md-4">
-              <div className="form-group">
-                <label>Payment Date</label>
-                <DatePicker
-                  selected={paymentDate}
-                  onChange={(date) => setPaymentDate(date)}
-                  className="form-control"
-                />
-              </div>
-            </div>
-            <div className="col-md-4">
-              <div className="form-group">
-                <label>Payment Method</label>
-                <select
-                  className="form-control"
-                  value={paymentMethod}
-                  onChange={(e) => setPaymentMethod(e.target.value)}
+      {/* Payment Details Modal */}
+      {showPaymentModal && selectedSale && (
+        <div
+          className="modal fade show"
+          style={{ display: "block", backgroundColor: "rgba(0,0,0,0.5)" }}
+        >
+          <div className="modal-dialog modal-lg">
+            <div className="modal-content">
+              <div className="modal-header bg-light">
+                <h5 className="modal-title font-weight-bold">
+                  Payment Details
+                </h5>
+                <button
+                  type="button"
+                  className="close"
+                  onClick={() => setShowPaymentModal(false)}
                 >
-                  <option value="cash">Cash</option>
-                  <option value="card">Card</option>
-                  <option value="bank_transfer">Bank Transfer</option>
-                  <option value="cheque">Cheque</option>
-                  <option value="other">Other</option>
-                </select>
+                  <span>&times;</span>
+                </button>
+              </div>
+
+              <div className="modal-body">
+                {/* Header Section */}
+                <div className="d-flex justify-content-between mb-4">
+                  <div>
+                    <h6 className="text-muted">Date</h6>
+                    <p className="font-weight-bold">
+                      {selectedSale.saleDate || ""}
+                    </p>
+                  </div>
+                  <div>
+                    <h6 className="text-muted">Reference No</h6>
+                    <p className="font-weight-bold">
+                      {selectedSale.referenceNumber || ""}
+                    </p>
+                  </div>
+                  <div>
+                    <h6 className="text-muted">Amount</h6>
+                    <p className="font-weight-bold">
+                      ₹{selectedSale.netTotalAmount}
+                    </p>
+                  </div>
+                  <div>
+                    <h6 className="text-muted">Due Amount</h6>
+                    <p
+                      className={`font-weight-bold ${
+                        due > 0 ? "text-danger" : "text-success"
+                      }`}
+                    >
+                      ₹{due.toFixed(2)}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Payment Methods Section */}
+                <div className="card mb-4">
+                  <div className="card-header bg-light">
+                    <h6 className="mb-0">Payment History</h6>
+                  </div>
+                  <div className="card-body p-0">
+                    <table className="table table-bordered mb-0">
+                      <thead>
+                        <tr>
+                          <th>Date</th>
+                          <th>Method</th>
+                          <th>Account</th>
+                          <th>Amount</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {Array.isArray(selectedSale.transaction) &&
+                        selectedSale.transaction.length > 0 ? (
+                          selectedSale.transaction.map((tx, index) => (
+                            <tr key={index}>
+                              <td>{tx.date}</td>
+                              <td>{tx.paymentMethod}</td>
+                              <td>
+                                {accountMap[tx.paymentAccountId]
+                                  ? `${accountMap[tx.paymentAccountId].accountName} / 
+       ${accountMap[tx.paymentAccountId].accountNumber}`
+                                  : "-"}
+                              </td>
+                              <td>₹ {tx.amount || 0}</td>
+                            </tr>
+                          ))
+                        ) : (
+                          <tr>
+                            <td colSpan="3" className="text-center">
+                              No payment found
+                            </td>
+                          </tr>
+                        )}
+                      </tbody>
+
+                      <tfoot>
+                        <tr className="font-weight-bold">
+                          <td colSpan="3" className="text-right">
+                            Total Paid:
+                          </td>
+                          <td>
+                            ₹
+                            {Array.isArray(selectedSale.transaction)
+                              ? selectedSale.transaction
+                                  .reduce(
+                                    (sum, tx) => sum + (tx.amount || 0),
+                                    0
+                                  )
+                                  .toFixed(2)
+                              : "0.00"}
+                          </td>
+                        </tr>
+                      </tfoot>
+                    </table>
+                  </div>
+                </div>
+
+                {/* Payment Notes Section */}
+                <div className="form-group">
+                  <label className="font-weight-bold">Payment Notes</label>
+                  <div className="border p-3 bg-light rounded">
+                    {Array.isArray(selectedSale.transaction) &&
+                    selectedSale.transaction.length > 0 ? (
+                      selectedSale.transaction.map((tx, index) => (
+                        <div key={index} className="mb-2">
+                          <strong>Payment {index + 1}:</strong>{" "}
+                          {tx.note || "No note"}
+                        </div>
+                      ))
+                    ) : (
+                      <span>No payment notes available</span>
+                    )}
+                  </div>
+                </div>
+
+                {/* Add Payment Section */}
+                <div className="mt-4">
+                  <h6 className="font-weight-bold mb-3">Add Payment</h6>
+
+                  <div className="row">
+                    {/* Amount */}
+                    <div className="col-md-3">
+                      <label>Amount *</label>
+                      <input
+                        type="number"
+                        className="form-control"
+                        value={paymentData.amount}
+                        onChange={(e) =>
+                          setPaymentData({
+                            ...paymentData,
+                            amount: e.target.value,
+                          })
+                        }
+                      />
+                    </div>
+
+                    {/* Payment Method */}
+                    <div className="col-md-3">
+                      <label>Method *</label>
+                      <select
+                        className="form-control"
+                        value={paymentData.method}
+                        onChange={(e) =>
+                          setPaymentData({
+                            ...paymentData,
+                            method: e.target.value,
+                          })
+                        }
+                      >
+                        <option value="">Select</option>
+                        {Array.isArray(paymentMethods) &&
+                          paymentMethods.map((m, i) => (
+                            <option key={i} value={m}>
+                              {m}
+                            </option>
+                          ))}
+                      </select>
+                    </div>
+
+                    {/* Payment Account */}
+                    <div className="col-md-4">
+                      <label>Account</label>
+                      <select
+                        className="form-control"
+                        value={paymentData.accountId}
+                        onChange={(e) =>
+                          setPaymentData({
+                            ...paymentData,
+                            accountId: e.target.value,
+                          })
+                        }
+                      >
+                        <option value="">None</option>
+                        {Array.isArray(paymentAccounts) &&
+                          paymentAccounts.map((a) => (
+                            <option key={a.id} value={a.id}>
+                              {a.accountName} / {a.accountNumber}
+                            </option>
+                          ))}
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* Note */}
+                  <div className="mt-3">
+                    <label>Note</label>
+                    <input
+                      type="text"
+                      className="form-control"
+                      value={paymentData.note}
+                      onChange={(e) =>
+                        setPaymentData({ ...paymentData, note: e.target.value })
+                      }
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="modal-footer">
+                <button
+                  type="button"
+                  className="btn btn-outline-secondary"
+                  onClick={() => setShowPaymentModal(false)}
+                >
+                  Close
+                </button>
+                <button
+                  className="btn btn-primary w-80"
+                  disabled={due <= 0}
+                  onClick={handleSubmitPayment}
+                >
+                  Add
+                </button>
               </div>
             </div>
           </div>
-
-          <button
-            className="btn btn-primary"
-            onClick={handleAddPayment}
-            disabled={
-              paymentAmount <= 0 ||
-              paymentAmount >
-                (selectedReturn?.returnDue ||
-                  selectedReturn?.netTotalAmount -
-                    (selectedReturn?.totalPaid || 0))
-            }
-          >
-            Add Payment
-          </button>
-
-          <h5 className="mt-4 mb-3">Payment History</h5>
-          {paymentHistory.length > 0 ? (
-            <table className="table table-bordered">
-              <thead>
-                <tr>
-                  <th>Date</th>
-                  <th>Amount</th>
-                  <th>Method</th>
-                  <th>Note</th>
-                </tr>
-              </thead>
-              <tbody>
-                {paymentHistory.map((tx, index) => (
-                  <tr key={index}>
-                    <td>{tx.date}</td>
-                    <td>₹{tx.amount.toFixed(2)}</td>
-                    <td>{tx.paymentMethod}</td>
-                    <td>{tx.note || "-"}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          ) : (
-            <p>No payment history found</p>
-          )}
-        </Modal.Body>
-        <Modal.Footer>
-          <Button
-            variant="secondary"
-            onClick={() => setShowPaymentModal(false)}
-          >
-            Close
-          </Button>
-        </Modal.Footer>
-      </Modal>
+        </div>
+      )}
     </div>
   );
 };

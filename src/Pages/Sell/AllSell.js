@@ -87,7 +87,9 @@ const AllSell = () => {
   useEffect(() => {
     const email = sessionStorage.getItem("userEmail");
     if (email) {
-      fetch(`https://fusionmastertech.com:8443/user/username?email=${email}`)
+      fetch(
+        `https://fusionmastertech.com:8443/customer/username?email=${email}`
+      )
         .then((response) => {
           if (!response.ok) {
             throw new Error("User not found");
@@ -140,33 +142,40 @@ const AllSell = () => {
   }, []);
 
   const handleSubmitPayment = async () => {
-    if (!paymentData.amount || !paymentData.method) {
-      alert("Amount and Payment Method are required");
+    if (!paymentData.amount || !paymentData.method || !paymentData.accountId) {
+      alert("Amount, Payment Method, and Account are required");
       return;
     }
 
     const payload = {
-      saleId: selectedSale.id,
       paymentMethod: paymentData.method,
       amount: Number(paymentData.amount),
-      paymentAccountId: paymentData.accountId || null,
-      note: paymentData.note,
-      paidOn: paymentData.paidOn,
+      transactionType: "sale",
+      note: paymentData.note || "",
+      date: paymentData.paidOn,
       addedBy: userName,
+      saleId: selectedSale.id, // ✅ Use transient ID
     };
+    console.log(payload);
 
     try {
-      await api.post(`${process.env.REACT_APP_BASE_URL}/sale/payment`, payload);
+      await api.post(
+        `${process.env.REACT_APP_BASE_URL}/payment-account/${paymentData.accountId}/sale-transaction`,
+        payload
+      );
 
-      alert("Payment added successfully");
+      // 🔥 REFRESH SELECTED SALE
+      const updatedSale = await api.get(
+        `${process.env.REACT_APP_BASE_URL}/sale/get/${selectedSale.id}`
+      );
+      setSelectedSale(updatedSale.data);
 
-      // Refresh sales
+      // Refresh sales list
       const res = await api.get(
         `${process.env.REACT_APP_BASE_URL}/sale/getall`
       );
       setSale(res.data);
 
-      // Reset form
       setPaymentData({
         amount: "",
         method: "",
@@ -175,7 +184,7 @@ const AllSell = () => {
         paidOn: new Date().toISOString().split("T")[0],
       });
 
-      setShowPaymentModal(false);
+      alert("Payment added successfully");
     } catch (err) {
       console.error(err);
       alert("Failed to add payment");
@@ -684,12 +693,12 @@ const AllSell = () => {
 
         if (response.status === 204) {
           setSale((prevSale) => prevSale.filter((sale) => sale.id !== id));
-          alert("Product deleted successfully!");
+          alert("Sale deleted successfully!");
         } else {
-          alert("Failed to delete product.");
+          alert("Failed to delete sale.");
         }
       } catch (error) {
-        console.error("Error deleting product:", error);
+        console.error("Error deleting sale:", error);
       }
     }
   };
@@ -995,16 +1004,23 @@ const AllSell = () => {
                                 </span>
                               </td>
                             )}
-
                             {columnsVisibility.paymentMethod && (
                               <td>
-                                {Array.isArray(sales.transaction)
-                                  ? sales.transaction
-                                      .map((tx) => tx.paymentMethod)
-                                      .join(", ")
+                                {Array.isArray(sales.transaction) &&
+                                sales.transaction.length > 0
+                                  ? (() => {
+                                      const methods = sales.transaction.map(
+                                        (tx) => tx.paymentMethod
+                                      );
+                                      const uniqueMethods = [
+                                        ...new Set(methods),
+                                      ]; // remove duplicates
+                                      return uniqueMethods.join(", ");
+                                    })()
                                   : ""}
                               </td>
                             )}
+
                             {columnsVisibility.totalAmount && (
                               <td>{sales.netTotalAmount || ""}</td>
                             )}
@@ -1012,7 +1028,7 @@ const AllSell = () => {
                               <td>
                                 {Array.isArray(sales.transaction)
                                   ? sales.transaction.reduce(
-                                      (sum, tx) => sum + (tx.credit || 0),
+                                      (sum, tx) => sum + (tx.amount || 0),
                                       0
                                     )
                                   : 0}
@@ -1082,7 +1098,13 @@ const AllSell = () => {
                   </div>
                   <div>
                     <h6 className="text-muted">Due Amount</h6>
-                    <p className="font-weight-bold">{due.toFixed(2)}</p>
+                    <p
+                      className={`font-weight-bold ${
+                        due > 0 ? "text-danger" : "text-success"
+                      }`}
+                    >
+                      ₹{due.toFixed(2)}
+                    </p>
                   </div>
                 </div>
 
@@ -1095,6 +1117,7 @@ const AllSell = () => {
                     <table className="table table-bordered mb-0">
                       <thead>
                         <tr>
+                          <th>Date</th>
                           <th>Method</th>
                           <th>Account</th>
                           <th>Amount</th>
@@ -1105,6 +1128,7 @@ const AllSell = () => {
                         selectedSale.transaction.length > 0 ? (
                           selectedSale.transaction.map((tx, index) => (
                             <tr key={index}>
+                              <td>{tx.date}</td>
                               <td>{tx.paymentMethod}</td>
                               <td>
                                 {accountMap[tx.paymentAccountId]
@@ -1112,13 +1136,7 @@ const AllSell = () => {
        ${accountMap[tx.paymentAccountId].accountNumber}`
                                   : "-"}
                               </td>
-                              <td>
-                                ₹
-                                {selectedSale.transaction.reduce(
-                                  (sum, tx) => sum + (tx.amount || 0),
-                                  0
-                                )}
-                              </td>
+                              <td>₹ {tx.amount || 0}</td>
                             </tr>
                           ))
                         ) : (
@@ -1132,7 +1150,7 @@ const AllSell = () => {
 
                       <tfoot>
                         <tr className="font-weight-bold">
-                          <td colSpan="2" className="text-right">
+                          <td colSpan="3" className="text-right">
                             Total Paid:
                           </td>
                           <td>

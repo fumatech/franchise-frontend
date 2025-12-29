@@ -12,6 +12,7 @@ import { FaUserPlus } from "react-icons/fa";
 function AddSell() {
   const navigate = useNavigate();
   const searchResultsRef = useRef(null);
+  const [userName, setUserName] = useState("");
   const [focusedIndex, setFocusedIndex] = useState(-1);
   // State hooks for form fields
   // Add this state for modal visibility
@@ -119,7 +120,28 @@ function AddSell() {
       [name]: value,
     }));
   };
-
+  useEffect(() => {
+    const email = sessionStorage.getItem("userEmail");
+    if (email) {
+      fetch(`${process.env.REACT_APP_BASE_URL}/user/username?email=${email}`)
+        .then((response) => {
+          if (!response.ok) {
+            throw new Error("User not found");
+          }
+          return response.json();
+        })
+        .then((data) => {
+          if (data) {
+            setUserName(data);
+          }
+        })
+        .catch((error) => {
+          console.error("Error fetching username:", error);
+          // Fallback to using email if username not found
+          setUserName(email.split("@")[0]);
+        });
+    }
+  }, []);
   const handleModalSubmit = async (e) => {
     e.preventDefault();
     try {

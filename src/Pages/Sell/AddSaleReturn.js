@@ -292,9 +292,10 @@ function AddSaleReturn() {
   // Add this useEffect to update total units whenever selected products change
   useEffect(() => {
     const newTotalUnits = selectedProducts.reduce(
-      (total, product) => total + (product.quantity || 0),
+      (total, product) => total + (product.returnQuantity || 0),
       0
     );
+
     setTotalUnits(newTotalUnits);
   }, [selectedProducts]);
 
@@ -836,7 +837,7 @@ function AddSaleReturn() {
         discountAmount: discountAmount,
         unitCostAfterDiscount: unitCostAfterDiscount,
         lineTotal: lineTotal,
-        taxRate: product.taxRateId,
+        taxRate: product.taxRate,
         taxAmount: taxAmount,
         profitMargin: profitMargin,
         profitAmount: profitAmount,
@@ -1213,10 +1214,13 @@ function AddSaleReturn() {
                                 })}
                               </tbody>
                             </table>
+                            <div>Return Total Amount: ₹{subtotalAmount}</div>
+
+                            <div className="total-units">
+                              <strong>Total Return Qty:</strong> {totalUnits}
+                            </div>
                           </div>
                         )}
-
-                        {/* Form submission and other components can go here */}
                       </div>
                     </div>
                   </div>

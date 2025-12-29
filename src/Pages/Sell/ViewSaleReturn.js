@@ -12,6 +12,7 @@ function ViewSaleReturn() {
   const searchResultsRef = useRef(null);
   const [focusedIndex, setFocusedIndex] = useState(-1);
   const navigate = useNavigate();
+  const [customer, setCustomer] = useState("");
 
   const [orderId, setOrderId] = useState("");
   const [selectedOrderId, setSelectedOrderId] = useState(null);
@@ -270,6 +271,7 @@ function ViewSaleReturn() {
         setReferenceNumber(data.referenceNumber);
         setOrderedBy(data.orderedBy);
         setAddedBy(data.addedBy);
+        setCustomer(data.customer);
         // setOrderDate(new Date(data.orderDate));
         setLocation(data.location);
         setAdditionalNotes(data.additionalNotes);
@@ -291,8 +293,8 @@ function ViewSaleReturn() {
         if (data.transaction && data.transaction.length > 0) {
           const transaction = data.transaction[0];
           setPaymentMethod(transaction.paymentMethod);
-          setPaidOn(new Date(transaction.date));
-          setAmount(transaction.amount);
+          //  setPaidOn(new Date(transaction.date));
+          //  setAmount(transaction.amount);
           // setPaymentAccount(transaction.paymentAccountId);
           setSelectedAccount(transaction.paymentAccountId);
 
@@ -338,9 +340,9 @@ function ViewSaleReturn() {
             (opt) => opt.value == item.taxRate
           );
           return axios
-            .get(`${process.env.REACT_APP_BASE_URL}/product/details`, {
+            .get(`https://fusionmastertech.com:8443/product/details`, {
               params: {
-                productName: item.productName,
+                productId: item.productId,
                 productVariationId: item.productVariationId,
               },
             })
@@ -399,6 +401,7 @@ function ViewSaleReturn() {
       .catch((error) => {
         console.error("Error fetching purchase order data:", error);
       });
+    console.log();
   }, [id, taxOptions]);
 
   useEffect(() => {
@@ -844,7 +847,7 @@ function ViewSaleReturn() {
         date: paidOn,
         paymentAccountId: paymentAccount || null,
         note: note || null,
-        transactionType: "saleReturn",
+        transactionType: "sale_return",
         cardType: cardDetails.cardType || null,
         cardNumber: cardDetails.cardNumber || null,
         cardHolderName: cardDetails.cardHolderName || null,
@@ -854,13 +857,22 @@ function ViewSaleReturn() {
             : null,
       },
     ];
-
+    const stockTransactions = purchaseItems.map((item) => ({
+      productId: item.productId,
+      variationId: item.productVariationId || null,
+      price: parseFloat(item.unitSellingPrice), // ✅ CORRECT VALUE
+      quantity: item.quantity,
+      transactionType: "sale_return",
+      date: new Date().toISOString().split("T")[0],
+      note: "Stock updated after sale return",
+    }));
     // Prepare payload with lists
     const payload = {
       orderId: selectedOrderId?.value || "", // Extract the `value` property
       referenceNumber: referenceNumber,
       orderRefernceNumber: purchaseReferenceNumber,
       orderedBy,
+      customer,
       addedBy: userName,
       orderDate,
       saleDate: formattedPurchaseDate,
@@ -876,6 +888,7 @@ function ViewSaleReturn() {
       taxAmount: taxOnSubtotal,
       additionalNotes,
       saleSoItem: purchaseItems,
+      stockTransaction: stockTransactions,
       saleSoPaymentMethod: purchasePoPaymentMethods,
       shippingSaleReturnDetails: shippingAllDetails,
       transaction: [
@@ -975,103 +988,6 @@ function ViewSaleReturn() {
                           </div>
                         </div>
                       </div>
-                      {/* Reference No */}
-                      {/* <div className="col-md-4">
-                        <div className="form-group">
-                          <label htmlFor="purchaseReferenceNumber">
-                            Order Reference No
-                            <span className="text-danger">*</span>
-                          </label>
-                          <input
-                            type="text"
-                            className="form-control rounded"
-                            id="purchaseReferenceNumber"
-                            name="purchaseReferenceNumber"
-                            placeholder="Enter here.."
-                            value={purchaseReferenceNumber}
-                            onChange={(e) =>
-                              setPurchaseReferenceNumber(e.target.value)
-                            }
-                            required
-                            readOnly
-                          />
-                        </div>
-                      </div> */}
-
-                      {/* Reference No */}
-                      {/* <div className="col-md-4">
-                        <div className="form-group">
-                          <label htmlFor="referenceNumber">
-                            Reference No<span className="text-danger">*</span>
-                          </label>
-                          <input
-                            type="text"
-                            className="form-control rounded"
-                            id="referenceNumber"
-                            name="referenceNumber"
-                            placeholder="Enter here.."
-                            value={referenceNumber}
-                            onChange={(e) => setReferenceNumber(e.target.value)}
-                            required
-                            readOnly
-                          />
-                        </div>
-                      </div> */}
-
-                      {/* Order By */}
-                      {/* <div className="col-md-4">
-                        <div className="form-group">
-                          <label htmlFor="orderedBy">
-                            Ordered By<span className="text-danger">*</span>
-                          </label>
-                          <input
-                            type="text"
-                            className="form-control rounded"
-                            id="orderedBy"
-                            name="orderedBy"
-                            value={orderedBy}
-                            onChange={(e) => setOrderedBy(e.target.value)}
-                            required
-                            readOnly
-                          />
-                        </div>
-                      </div> */}
-
-                      {/* Added By */}
-                      {/* <div className="col-md-4">
-                        <div className="form-group">
-                          <label htmlFor="addedBy">
-                            Added By<span className="text-danger">*</span>
-                          </label>
-                          <input
-                            type="text"
-                            className="form-control rounded"
-                            id="addedBy"
-                            name="addedBy"
-                            placeholder="Enter here..."
-                            value={userName}
-                            onChange={(e) => setAddedBy(e.target.value)}
-                            required
-                            readOnly
-                          />
-                        </div>
-                      </div> */}
-
-                      {/* Order Date */}
-                      {/* <div className="col-md-4">
-                        <div className="form-group d-flex flex-row flex-md-column">
-                          <label htmlFor="orderDate">Order Date</label>
-                          <DatePicker
-                            selected={orderDate}
-                            onChange={(date) => setOrderDate(date)}
-                            className="form-control w-100 ms-1 ms-md-0 py-3 rounded-1"
-                            dateFormat="MM/dd/yyyy"
-                            required
-                            minDate={new Date()} // Prevent past dates
-                            popperPlacement="top" // Display the calendar above
-                          />
-                        </div>
-                      </div> */}
 
                       {/* Purchase Date */}
                       <div className="col-md-4">
@@ -1089,96 +1005,6 @@ function ViewSaleReturn() {
                           />
                         </div>
                       </div>
-
-                      {/* Pay Term */}
-                      {/* <div className="col-md-4">
-                        <div className="form-group ">
-                          <label htmlFor="pay_term_number">Pay term</label>
-                          <div className="d-flex">
-                            <input
-                              className="form-control rounded-start-1 p-3"
-                              placeholder="Pay term"
-                              type="number"
-                              id="pay_term_number"
-                              value={payTermNumber}
-                              onChange={(e) => setPayTermNumber(e.target.value)}
-                              readOnly
-                            />
-                            <select
-                              className="form-select border rounded-start-0  rounded-end-1 p-1 "
-                              value={payTermType}
-                              onChange={(e) => setPayTermType(e.target.value)}
-                              disabled
-                            >
-                              <option value="">Please Select</option>
-                              <option value="months">Months</option>
-                              <option value="days">Days</option>
-                            </select>
-                          </div>
-                        </div>
-                      </div> */}
-
-                      {/* Location */}
-                      {/* <div className="col-md-4">
-                        <div className="form-group">
-                          <label htmlFor="location">
-                            Location<span className="text-danger">*</span>
-                          </label>
-                          <input
-                            type="text"
-                            className="form-control rounded"
-                            id="location"
-                            name="location"
-                            placeholder="Enter here.."
-                            value={location}
-                            onChange={(e) => setLocation(e.target.value)}
-                            required
-                            readOnly
-                          />
-                        </div>
-                      </div> */}
-
-                      {/* <div className="col-md-4">
-                        <div className="form-group">
-                          <label htmlFor="document">Attach Document</label>
-                          <div className="file-input file-input-new">
-                            <div className="input-group file-caption-main">
-                              <div className="form-control file-caption kv-fileinput-caption">
-                                <div className="file-caption-name">
-                                  {file ? file.name : "No file chosen"}
-                                </div>
-                              </div>
-                              <div className="input-group-btn">
-                                <div className="btn">
-                                  <i className=""></i>
-                                  &nbsp;
-                                  <input
-                                    id="upload_document"
-                                    accept=".pdf,.csv,.zip,.doc,.docx,.jpeg,.jpg,.png"
-                                    name="document"
-                                    type="file"
-                                    onChange={handleFileChange}
-                                    disabled
-                                  />
-                                </div>
-                              </div>
-                            </div>
-                            <p className="help-block">Max File size: 5MB</p>
-                          </div>
-                        </div>
-                      </div> */}
-
-                      {/* <div className="col-md-4">
-                        <div className="form-group">
-                          <label htmlFor="document">Attach Document:</label>
-                          <div className="form-control file-caption kv-fileinput-caption">
-                            <div className="file-caption-name">
-                              {"Sample Document: predefined_document.pdf"}
-                            </div>
-                          </div>
-                          <p className="help-block">Max File size: 5MB</p>
-                        </div>
-                      </div> */}
                     </div>
                   </div>
                 </div>
@@ -1186,7 +1012,7 @@ function ViewSaleReturn() {
                   <div className="card-body">
                     <div className="row">
                       <div className="col-md-12">
-                        {/* <div className="form-group">
+                        <div className="form-group">
                           <label>Search Products</label>
 
                           <div className="search-container">
@@ -1198,6 +1024,7 @@ function ViewSaleReturn() {
                               onChange={handleSearch}
                               onKeyDown={handleKeyPress}
                               autoComplete="off"
+                              disabled
                             />
                             {searchTerm && (
                               <button
@@ -1212,7 +1039,7 @@ function ViewSaleReturn() {
                               </button>
                             )}
                           </div>
-                        </div> */}
+                        </div>
 
                         <div className="product-list">
                           {searchTerm && searchResults.length > 0 && (
@@ -1240,7 +1067,6 @@ function ViewSaleReturn() {
                                 >
                                   <div className="product-content flex justify-between p-0 items-start gap-4">
                                     <div className="row d-flex justify-content-between p-0 ">
-                                      {/* Product Info */}
                                       <div className="col-8 product-info p-0">
                                         <div className="product-main-info p-0">
                                           <span className="product-name">
@@ -1311,7 +1137,7 @@ function ViewSaleReturn() {
                                 <tr>
                                   <th>#</th>
                                   <th>Product Name</th>
-                                  <th>Sale Quantity</th>
+                                  <th>Return Quantity</th>
                                   <th>Unit Cost</th>
                                   <th>Tax Rate</th>
                                   <th>Tax Amount</th>
@@ -1362,6 +1188,7 @@ function ViewSaleReturn() {
                                           value={product.quantity}
                                           min="1"
                                           readOnly
+                                          disabled
                                           onChange={(e) =>
                                             handleQuantityChange(
                                               product.id,
@@ -1386,9 +1213,9 @@ function ViewSaleReturn() {
                                               selected
                                             )
                                           }
-                                          isDisabled={true}
                                           placeholder="Select Tax"
                                           isSearchable
+                                          isDisabled={true}
                                           styles={{
                                             control: (provided) => ({
                                               ...provided,
@@ -1422,262 +1249,18 @@ function ViewSaleReturn() {
                               </tbody>
                             </table>
 
-                            {/* Total Amount Calculation */}
-                            <div>Total Amount: ₹{subtotalAmount}</div>
+                            <div>Return Total Amount: ₹{subtotalAmount}</div>
 
-                            {/* Total Units Calculation */}
                             <div className="total-units">
-                              <strong>Total Units:</strong> {totalUnits}
+                              <strong>Total Return Qty:</strong> {totalUnits}
                             </div>
                           </div>
                         )}
-
-                        {/* Form submission and other components can go here */}
                       </div>
                     </div>
                   </div>
                 </div>
-                {/* Discount Type Section */}
-                {/* <div className="card card-default rounded-4 border-0 cardHover">
-                  <div className="card-body">
-                    <div className="row">
-                      <table className="table border-0">
-                        <tbody>
-                          <tr>
-                            <td className="col-md-3">
-                              <div className="form-group">
-                                <label htmlFor="discountType">
-                                  Discount Type
-                                </label>
-                                <select
-                                  className="form-control select2"
-                                  id="discountType"
-                                  name="discountType"
-                                  value={discountType}
-                                  onChange={handleDiscountTypeChange}
-                                  disabled
-                                >
-                                  <option value="">None</option>
-                                  <option value="Fixed">Fixed</option>
-                                  <option value="Percentage">Percentage</option>
-                                </select>
-                              </div>
-                            </td>
 
-                            <td className="col-md-3">
-                              <div className="form-group">
-                                <label htmlFor="discount_amount">
-                                  {discountType === "percentage"
-                                    ? "Discount Percentage (%)"
-                                    : "Discount Amount"}
-                                </label>
-
-                                <input
-                                  className="form-control input_number"
-                                  required
-                                  name="discount_amount"
-                                  type="text" // Ensure numeric input for better accuracy
-                                  value={discountAmount}
-                                  onChange={handleDiscountAmountChange}
-                                  readOnly
-                                  id="discount_amount"
-                                  disabled={discountType === ""} // Disable if no discount type is selected
-                                  placeholder={
-                                    discountType === "percentage"
-                                      ? "Enter percentage (e.g., 10)"
-                                      : "Enter fixed amount (e.g., 100)"
-                                  }
-                                />
-                              </div>
-                            </td>
-
-                            <td className="col-md-3">
-                              <b>Discount</b> (-)
-                              <span
-                                id="discount_calculated_amount"
-                                className="display_currency"
-                              >
-                                {discountAmount
-                                  ? parseFloat(discountAmount).toFixed(2)
-                                  : "0.00"}
-                              </span>
-                            </td>
-                          </tr>
-                          <tr>
-                            <td>
-                              <div className="col-md-auto">
-                                <div>
-                                  <label>sale Tax</label>
-                                  <Select
-                                    options={taxOptions}
-                                    value={
-                                      taxOptions.find(
-                                        (opt) => opt.value === purchaseTax
-                                      ) || taxOptions[0]
-                                    }
-                                    onChange={handleTaxIdChange}
-                                    isDisabled={true}
-                                    isClearable={true}
-                                    styles={{
-                                      control: (provided) => ({
-                                        ...provided,
-                                        width: "100%",
-                                      }),
-                                    }}
-                                  />
-                                </div>
-                              </div>
-                            </td>
-
-                            <td>&nbsp;</td>
-
-                            <td>
-                              <b>Tax Amount</b> (+)
-                              <span
-                                id="tax_calculated_amount"
-                                className="display_currency"
-                              >
-                                {taxOnSubtotal}
-                              </span>
-                            </td>
-                          </tr>
-                          <tr>
-                            <td colSpan="4">
-                              <div className="form-group">
-                                <label htmlFor="additional_notes">
-                                  Additional Notes
-                                </label>
-                                <textarea
-                                  className="form-control"
-                                  rows="3"
-                                  name="additional_notes"
-                                  cols="50"
-                                  id="additional_notes"
-                                  value={additionalNotes}
-                                  readOnly
-                                  onChange={handleAdditionalNotesChange}
-                                />
-                              </div>
-                            </td>
-                          </tr>
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-                </div> */}
-
-                {/* shipping details */}
-                {/* <div className="card card-default rounded-4 border-0 cardHover">
-                  <div className="card-body">
-                    <div className="row">
-                      <div className="col-md-4">
-                        <div className="form-group">
-                          <label htmlFor="shippingDetails">
-                            Shipping Details
-                            <span className="text-danger">*</span>
-                          </label>
-                          <input
-                            type="text"
-                            className="form-control rounded"
-                            id="shippingDetails"
-                            name="shippingDetails"
-                            placeholder="Enter here.."
-                            value={shippingDetails}
-                            onChange={(e) => setShippingDetails(e.target.value)}
-                            required
-                            readOnly
-                          />
-                        </div>
-                      </div>
-                      <div className="col-md-4">
-                        <div className="form-group">
-                          <label htmlFor="shippingCharges">
-                            Additional Shipping Charges
-                            <span className="text-danger">*</span>
-                          </label>
-                          <input
-                            type="number"
-                            className="form-control rounded"
-                            id="shippingCharges"
-                            name="shippingCharges"
-                            placeholder="0"
-                            value={shippingCharges}
-                            onChange={(e) => setShippingCharges(e.target.value)}
-                            required
-                            readOnly
-                          />
-                        </div>
-                      </div>
-                      <div className="col-md-12 text-center">
-                        <button
-                          type="button"
-                          className="btn"
-                          style={{ backgroundColor: "#0c4461", color: "white" }}
-                          onClick={toggleVisibility}
-                          disabled
-                        >
-                          <i className="fas fa-plus"></i> Add additional
-                          expenses{" "}
-                          <i
-                            className={`fas ${
-                              isVisible ? "fa-chevron-up" : "fa-chevron-down"
-                            }`}
-                          ></i>
-                        </button>
-                      </div>
-                      {isVisible && (
-                        <div className="col-md-8 col-md-offset-4">
-                          <table className="table table-bordered add-product-price-table table-condensed ">
-                            <thead>
-                              <tr>
-                                <th>Additional Expense Name</th>
-                                <th>Amount</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {additionalExpenses.map((expense, index) => (
-                                <tr key={index}>
-                                  <td>
-                                    <input
-                                      className="form-control"
-                                      type="text"
-                                      value={expense.name}
-                                      onChange={(e) =>
-                                        handleExpenseChange(
-                                          index,
-                                          "name",
-                                          e.target.value
-                                        )
-                                      }
-                                    />
-                                  </td>
-                                  <td>
-                                    <input
-                                      className="form-control input_number"
-                                      type="text"
-                                      value={expense.amount}
-                                      onChange={(e) =>
-                                        handleExpenseChange(
-                                          index,
-                                          "amount",
-                                          e.target.value
-                                        )
-                                      }
-                                    />
-                                  </td>
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
-                        </div>
-                      )}
-
-                      <label>Purchase Total:{finalPurchaseAmount}</label>
-                    </div>
-                  </div>
-                </div> */}
-
-                {/* ADD payment */}
                 <div className="card card-default rounded-4 border-0 cardHover">
                   <div className="card-body">
                     <div className="row">
@@ -1688,18 +1271,6 @@ function ViewSaleReturn() {
                           <div className="">
                             <div className="py-2 ">
                               <div className="">
-                                {/* <div className="row">
-                                <div className="col-md-12">
-                                  <strong>Advance Balance:</strong>{" "}
-                                  <span id="">0</span>
-                                  <input
-                                    id="advanceBalance"
-                                    data-error-msg="Required advance balance not available"
-                                    name="advanceBalance"
-                                    type="hidden"
-                                  />
-                                </div>
-                              </div> */}
                                 <div className="row">
                                   <input type="hidden" className="" value="0" />
                                   <div className="col-md-4">
@@ -1720,7 +1291,7 @@ function ViewSaleReturn() {
                                           onChange={(e) =>
                                             setAmount(e.target.value)
                                           }
-                                          readOnly
+                                          disabled
                                         />
                                       </div>
                                     </div>
@@ -1736,9 +1307,9 @@ function ViewSaleReturn() {
                                           className="form-control py-3"
                                           selected={paidOn} // Ensure `paidOn` is a Date object
                                           onChange={(date) => setPaidOn(date)} // Handle date selection
-                                          disabled
                                           dateFormat="dd MM yyyy" // Set desired format (day month year)
                                           placeholderText="Select paid on date" // Optional placeholder
+                                          disabled
                                         />
                                       </div>
                                     </div>
@@ -1797,11 +1368,11 @@ function ViewSaleReturn() {
                                           id="account"
                                           name="account_id"
                                           value={selectedAccount}
+                                          disabled
                                           onChange={(e) => {
                                             setSelectedAccount(e.target.value);
                                             setPaymentAccount(e.target.value); // Send only the ID
                                           }}
-                                          disabled
                                         >
                                           <option value="">None</option>
                                           {paymentAccounts.map((account) => (
@@ -1817,192 +1388,6 @@ function ViewSaleReturn() {
                                       </div>
                                     </div>
                                   </div>
-                                  {/* Card Details */}
-                                  {paymentMethod === "card" && (
-                                    <>
-                                      <div className="col-md-4">
-                                        <div className="form-group">
-                                          <label htmlFor="cardNumber">
-                                            Card Number
-                                          </label>
-                                          <input
-                                            className="form-control"
-                                            id="cardNumber"
-                                            name="cardNumber"
-                                            placeholder="Card Number"
-                                            type="text"
-                                            value={cardDetails.cardNumber}
-                                            onChange={handleInputChange}
-                                          />
-                                        </div>
-                                      </div>
-                                      <div className="col-md-4">
-                                        <div className="form-group">
-                                          <label htmlFor="cardHolderName">
-                                            Card holder name
-                                          </label>
-                                          <input
-                                            className="form-control"
-                                            id="cardHolderName"
-                                            name="cardHolderName"
-                                            placeholder="Card holder name"
-                                            type="text"
-                                            value={cardDetails.cardHolderName}
-                                            onChange={handleInputChange}
-                                          />
-                                        </div>
-                                      </div>
-                                      <div className="col-md-4">
-                                        <div className="form-group">
-                                          <label htmlFor="cardTransactionNumber">
-                                            Card Transaction No.
-                                          </label>
-                                          <input
-                                            className="form-control"
-                                            id="cardTransactionNumber"
-                                            name="cardTransactionNumber"
-                                            placeholder="Card Transaction No."
-                                            type="text"
-                                            value={
-                                              cardDetails.cardTransactionNumber
-                                            }
-                                            onChange={handleInputChange}
-                                          />
-                                        </div>
-                                      </div>
-                                      <div className="col-md-3">
-                                        <div className="form-group">
-                                          <label htmlFor="cardType">
-                                            Card Type
-                                          </label>
-                                          <select
-                                            className="form-control"
-                                            id="cardType"
-                                            name="cardType"
-                                            value={cardDetails.cardType}
-                                            onChange={handleInputChange}
-                                          >
-                                            <option value="credit">
-                                              Credit Card
-                                            </option>
-                                            <option value="debit">
-                                              Debit Card
-                                            </option>
-                                            <option value="visa">Visa</option>
-                                            <option value="master">
-                                              MasterCard
-                                            </option>
-                                          </select>
-                                        </div>
-                                      </div>
-                                      <div className="col-md-3">
-                                        <div className="form-group">
-                                          <label htmlFor="cardMonth">
-                                            Month
-                                          </label>
-                                          <input
-                                            className="form-control"
-                                            id="cardMonth"
-                                            name="cardMonth"
-                                            placeholder="Month"
-                                            type="text"
-                                            value={cardDetails.cardMonth}
-                                            onChange={handleInputChange}
-                                          />
-                                        </div>
-                                      </div>
-                                      <div className="col-md-3">
-                                        <div className="form-group">
-                                          <label htmlFor="cardYear">Year</label>
-                                          <input
-                                            className="form-control"
-                                            id="cardYear"
-                                            name="cardYear"
-                                            placeholder="Year"
-                                            type="text"
-                                            value={cardDetails.cardYear}
-                                            onChange={handleInputChange}
-                                          />
-                                        </div>
-                                      </div>
-                                      <div className="col-md-3">
-                                        <div className="form-group">
-                                          <label htmlFor="cardSecurity">
-                                            Security Code
-                                          </label>
-                                          <input
-                                            className="form-control"
-                                            id="cardSecurity"
-                                            name="cardSecurity"
-                                            placeholder="Security Code"
-                                            type="text"
-                                            value={cardDetails.cardSecurity}
-                                            onChange={handleInputChange}
-                                          />
-                                        </div>
-                                      </div>
-                                    </>
-                                  )}
-
-                                  {/* Cheque Details */}
-                                  {paymentMethod === "cheque" && (
-                                    <div className="col-md-12">
-                                      <div className="form-group">
-                                        <label htmlFor="chequeNumber">
-                                          Cheque No.
-                                        </label>
-                                        <input
-                                          className="form-control"
-                                          id="chequeNumber"
-                                          name="chequeNumber"
-                                          placeholder="Cheque No."
-                                          type="text"
-                                          value={chequeNumber}
-                                          onChange={handleInputChange}
-                                        />
-                                      </div>
-                                    </div>
-                                  )}
-
-                                  {/* Bank Transfer Details */}
-                                  {paymentMethod === "t" && (
-                                    <div className="col-md-12">
-                                      <div className="form-group">
-                                        <label htmlFor="bankAccountNumber">
-                                          Bank Account Number
-                                        </label>
-                                        <input
-                                          className="form-control"
-                                          id="bankAccountNumber"
-                                          name="bankAccountNumber"
-                                          placeholder="Bank Account Number"
-                                          type="text"
-                                          value={bankAccountNumber}
-                                          onChange={handleInputChange}
-                                        />
-                                      </div>
-                                    </div>
-                                  )}
-
-                                  {/* Custom Payment Details */}
-                                  {paymentMethod.startsWith("custom_pay") && (
-                                    <div className="col-md-12">
-                                      <div className="form-group">
-                                        <label htmlFor="customTransactionNo">
-                                          Transaction No.
-                                        </label>
-                                        <input
-                                          className="form-control"
-                                          id="customTransactionNo"
-                                          name="customTransactionNo"
-                                          placeholder="Transaction No."
-                                          type="text"
-                                          value={customTransactionNo}
-                                          onChange={handleInputChange}
-                                        />
-                                      </div>
-                                    </div>
-                                  )}
 
                                   <div className="col-md-12">
                                     <div className="form-group">
@@ -2015,7 +1400,7 @@ function ViewSaleReturn() {
                                         cols="50"
                                         value={note}
                                         onChange={handleInputChange}
-                                        readOnly
+                                        disabled
                                       ></textarea>
                                     </div>
                                   </div>
@@ -2042,8 +1427,8 @@ function ViewSaleReturn() {
                 <div className="container-fluid text-center mt-3">
                   <button
                     type="submit"
-                    className="btn btn-save btn-lg px-4 py-2 m-2 "
                     disabled
+                    className="btn btn-save btn-lg px-4 py-2 m-2 "
                   >
                     Save
                   </button>
