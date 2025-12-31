@@ -285,7 +285,7 @@ function EditDIPurchase() {
   const searchProducts = async (query) => {
     try {
       const response = await axios.get(
-        `https://fusionmastertech.com:8443/product/search?query=${query}`,
+        `https://fusionmastertech.com:8443/product/search/active?query=${query}`,
         {
           headers: {
             "Content-Type": "application/json",

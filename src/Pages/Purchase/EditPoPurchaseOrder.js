@@ -339,7 +339,7 @@ function EditPoPurchaseOrder() {
   const searchProducts = async (query) => {
     try {
       const response = await axios.get(
-        `${process.env.REACT_APP_BASE_URL}/product/search?query=${query}`
+        `https://fusionmastertech.com:8443/product/search/active?query=${query}`
       );
       setSearchResults(response.data);
     } catch (error) {

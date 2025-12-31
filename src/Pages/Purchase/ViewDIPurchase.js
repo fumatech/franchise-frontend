@@ -271,7 +271,7 @@ function ViewDIPurchase() {
   const searchProducts = async (query) => {
     try {
       const response = await axios.get(
-        `https://fusionmastertech.com:8443/product/search?query=${query}`
+        `https://fusionmastertech.com:8443/product/search/active?query=${query}`
       );
       setSearchResults(response.data);
     } catch (error) {

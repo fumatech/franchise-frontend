@@ -95,7 +95,7 @@ function ViewWarrantyClaim() {
   const searchProducts = async (query) => {
     try {
       const response = await fetch(
-        `https://fusionmastertech.com:8443/product/search?query=${query}`
+        `https://fusionmastertech.com:8443/product/search/active?query=${query}`
       );
       const data = await response.json();
       setSearchResults(data); // Set the search results
