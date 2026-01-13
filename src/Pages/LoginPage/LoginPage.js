@@ -5,6 +5,7 @@ import "admin-lte/dist/css/adminlte.min.css";
 import "./LoginPage.css";
 import axios from "axios";
 import Form from "react-bootstrap/Form";
+import { toast } from "react-toastify";
 
 const LoginPage = () => {
   const [email, setEmail] = useState("");
@@ -74,7 +75,7 @@ const LoginPage = () => {
           // Verify tenant connection
           await verifyTenantConnection(tenantDbName);
         }
-
+        // toast.success("Login successful!");
         window.location.href = "/fumaretail/Dashboard";
       } else {
         setError("Invalid credentials. Please try again.");
