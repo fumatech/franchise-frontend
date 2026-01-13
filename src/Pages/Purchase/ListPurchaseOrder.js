@@ -12,9 +12,12 @@ import { jsPDF } from "jspdf";
 import "jspdf-autotable";
 import * as XLSX from "xlsx";
 import { Link, useNavigate } from "react-router-dom";
+import Collapse from "react-bootstrap/Collapse";
 
 const ListPurchaseOrder = () => {
   const [purchases, setPurchases] = useState([]);
+  const [filteredPurchases, setFilteredPurchases] = useState([]);
+  
   const [columnsVisibility, setColumnsVisibility] = useState({
     action: true,
     status: true,
@@ -29,21 +32,23 @@ const ListPurchaseOrder = () => {
     addedBy: true,
     purchaseOrderId: true,
   });
+  
   const navigate = useNavigate();
-
   const [currentPage, setCurrentPage] = useState(1);
   const [entriesPerPage, setEntriesPerPage] = useState(25);
+  const [open, setOpen] = useState(false);
+
+  // Filter states
   const [filterValues, setFilterValues] = useState({
-    locations: [],
+    statuses: ["Ordered", "Accepted", "Rejected", "Shipped", "Delivered", "Received"],
     vendors: [],
-    statuses: [],
   });
 
   const [activeFilters, setActiveFilters] = useState({
-    location: "",
-    vendor: "",
     status: "",
-    dateRange: "",
+    vendor: "",
+    startDate: "",
+    endDate: "",
   });
 
   const fetchPurchases = async () => {
@@ -56,6 +61,8 @@ const ListPurchaseOrder = () => {
 
       if (!franchiseId) {
         console.error("No franchiseId found in storage");
+        setPurchases([]);
+        setFilteredPurchases([]);
         return;
       }
 
@@ -73,9 +80,19 @@ const ListPurchaseOrder = () => {
         const sortedData = filteredData.sort((a, b) => b.id - a.id);
 
         setPurchases(sortedData);
+        setFilteredPurchases(sortedData);
+
+        // Extract filter values
+        const vendors = [...new Set(sortedData.map((item) => item.vendor))].filter(Boolean);
+
+        setFilterValues({
+          statuses: ["Ordered", "Accepted", "Rejected", "Shipped", "Delivered", "Received"],
+          vendors,
+        });
       } else {
         console.error("Fetched data is not an array:", response.data);
         setPurchases([]);
+        setFilteredPurchases([]);
       }
 
       // Load additional scripts after data is processed
@@ -91,6 +108,7 @@ const ListPurchaseOrder = () => {
     } catch (error) {
       console.error("Error fetching purchases:", error);
       setPurchases([]);
+      setFilteredPurchases([]);
     }
   };
 
@@ -98,62 +116,66 @@ const ListPurchaseOrder = () => {
     fetchPurchases();
   }, []);
 
+  // Apply filters whenever activeFilters or purchases change
   useEffect(() => {
-    if (purchases.length > 0) {
-      const locations = [
-        ...new Set(purchases.map((item) => item.location)),
-      ].filter(Boolean);
-      const vendors = [...new Set(purchases.map((item) => item.vendor))].filter(
-        Boolean
-      );
-      const statuses = [
-        ...new Set(
-          purchases.map((item) => {
-            switch (item.status) {
-              case 0:
-                return "Ordered";
-              case 1:
-                return "Accepted";
-              case 2:
-                return "Rejected";
-              case 3:
-                return "Shipped";
-              case 4:
-                return "Delivered";
-              case 5:
-                return "Received";
-              default:
-                return null;
-            }
-          })
-        ),
-      ].filter(Boolean);
+    let result = purchases;
 
-      setFilterValues({ locations, vendors, statuses });
+    // Apply status filter
+    if (activeFilters.status) {
+      const statusMap = {
+        "Ordered": 0,
+        "Accepted": 1,
+        "Rejected": 2,
+        "Shipped": 3,
+        "Delivered": 4,
+        "Received": 5
+      };
+      
+      const statusValue = statusMap[activeFilters.status];
+      result = result.filter((purchase) => purchase.status === statusValue);
     }
-  }, [purchases]);
+
+    // Apply vendor filter
+    if (activeFilters.vendor) {
+      result = result.filter((purchase) => purchase.vendor === activeFilters.vendor);
+    }
+
+    // Apply start date filter
+    if (activeFilters.startDate) {
+      result = result.filter((purchase) => {
+        const orderDate = new Date(purchase.orderDate);
+        const startDate = new Date(activeFilters.startDate);
+        return orderDate >= startDate;
+      });
+    }
+
+    // Apply end date filter
+    if (activeFilters.endDate) {
+      result = result.filter((purchase) => {
+        const orderDate = new Date(purchase.orderDate);
+        const endDate = new Date(activeFilters.endDate);
+        endDate.setHours(23, 59, 59, 999); // End of day
+        return orderDate <= endDate;
+      });
+    }
+
+    setFilteredPurchases(result);
+    setCurrentPage(1);
+  }, [activeFilters, purchases]);
 
   const handleFilterChange = (e) => {
     const { name, value } = e.target;
     setActiveFilters((prev) => ({ ...prev, [name]: value }));
-    setCurrentPage(1);
   };
 
-  const filteredPurchases = purchases.filter((purchase) => {
-    return (
-      (activeFilters.location === "" ||
-        purchase.location === activeFilters.location) &&
-      (activeFilters.vendor === "" ||
-        purchase.vendor === activeFilters.vendor) &&
-      (activeFilters.status === "" ||
-        (activeFilters.status === "Ordered" && purchase.status === 0) ||
-        (activeFilters.status === "Accepted" && purchase.status === 1) ||
-        (activeFilters.status === "Rejected" && purchase.status === 2) ||
-        (activeFilters.status === "Shipped" && purchase.status === 3) ||
-        (activeFilters.status === "Delivered" && purchase.status === 4) ||
-        (activeFilters.status === "Received" && purchase.status === 5))
-    );
-  });
+  const resetFilters = () => {
+    setActiveFilters({
+      status: "",
+      vendor: "",
+      startDate: "",
+      endDate: "",
+    });
+  };
 
   const startIndex = (currentPage - 1) * entriesPerPage;
   const endIndex = startIndex + entriesPerPage;
@@ -190,25 +212,28 @@ const ListPurchaseOrder = () => {
   };
 
   const exportCSV = () => {
-    const csvData = purchases.map((purchase) => ({
+    const csvData = filteredPurchases.map((purchase) => ({
       "Order ID": purchase.franchisePurchaseOrderId,
       "Order Date": purchase.orderDate,
       "Reference No": purchase.referenceNumber,
-      Location: purchase.location,
-      Vendor: purchase.vendor,
+      "Location": purchase.location,
+      "Vendor": purchase.vendor,
       "Total Items": purchase.totalItems,
-      Status:
-        purchase.status === 0
-          ? "Ordered"
-          : purchase.status === 1
-            ? "Accepted"
-            : purchase.status === 2
-              ? "Rejected"
-              : purchase.status === 3
-                ? "Shipped"
-                : purchase.status === 4
-                  ? "Delivered"
-                  : "Received",
+      "Shipped Items": purchase.totalShippedItems || 0,
+      "Status": purchase.status === 0
+        ? "Ordered"
+        : purchase.status === 1
+          ? "Accepted"
+          : purchase.status === 2
+            ? "Rejected"
+            : purchase.status === 3
+              ? "Shipped"
+              : purchase.status === 4
+                ? "Delivered"
+                : purchase.status === 5
+                  ? "Received"
+                  : "Unknown",
+      "Additional Notes": purchase.additionalNotes,
       "Added By": purchase.addedBy,
     }));
 
@@ -225,25 +250,28 @@ const ListPurchaseOrder = () => {
 
   const exportExcel = () => {
     const ws = XLSX.utils.json_to_sheet(
-      purchases.map((purchase) => ({
+      filteredPurchases.map((purchase) => ({
         "Order ID": purchase.franchisePurchaseOrderId,
         "Order Date": purchase.orderDate,
         "Reference No": purchase.referenceNumber,
-        Location: purchase.location,
-        Vendor: purchase.vendor,
+        "Location": purchase.location,
+        "Vendor": purchase.vendor,
         "Total Items": purchase.totalItems,
-        Status:
-          purchase.status === 0
-            ? "Ordered"
-            : purchase.status === 1
-              ? "Accepted"
-              : purchase.status === 2
-                ? "Rejected"
-                : purchase.status === 3
-                  ? "Shipped"
-                  : purchase.status === 4
-                    ? "Delivered"
-                    : "Received",
+        "Shipped Items": purchase.totalShippedItems || 0,
+        "Status": purchase.status === 0
+          ? "Ordered"
+          : purchase.status === 1
+            ? "Accepted"
+            : purchase.status === 2
+              ? "Rejected"
+              : purchase.status === 3
+                ? "Shipped"
+                : purchase.status === 4
+                  ? "Delivered"
+                  : purchase.status === 5
+                    ? "Received"
+                    : "Unknown",
+        "Additional Notes": purchase.additionalNotes,
         "Added By": purchase.addedBy,
       }))
     );
@@ -265,17 +293,17 @@ const ListPurchaseOrder = () => {
           "Order ID",
           "Date",
           "Reference",
-          "Location",
           "Vendor",
           "Status",
           "Total Items",
+          "Shipped Items",
+          "Added By",
         ],
       ],
-      body: purchases.map((purchase) => [
+      body: filteredPurchases.map((purchase) => [
         purchase.franchisePurchaseOrderId,
         purchase.orderDate,
         purchase.referenceNumber,
-        purchase.location,
         purchase.vendor,
         purchase.status === 0
           ? "Ordered"
@@ -287,8 +315,12 @@ const ListPurchaseOrder = () => {
                 ? "Shipped"
                 : purchase.status === 4
                   ? "Delivered"
-                  : "Received",
+                  : purchase.status === 5
+                    ? "Received"
+                    : "Unknown",
         purchase.totalItems,
+        purchase.totalShippedItems || 0,
+        purchase.addedBy,
       ]),
       theme: "grid",
       styles: {
@@ -321,6 +353,12 @@ const ListPurchaseOrder = () => {
             th, td { border: 1px solid #ddd; padding: 8px; }
             th { background-color: #f2f2f2; }
             th, td { text-align: left; }
+            .status-ordered { color: #ff9800; }
+            .status-accepted { color: #4caf50; }
+            .status-rejected { color: #f44336; }
+            .status-shipped { color: #2196f3; }
+            .status-delivered { color: #673ab7; }
+            .status-received { color: #009688; }
           </style>
         </head>
         <body>
@@ -331,45 +369,58 @@ const ListPurchaseOrder = () => {
                 ${columnsVisibility.purchaseOrderId ? "<th>Order ID</th>" : ""}
                 ${columnsVisibility.date ? "<th>Date</th>" : ""}
                 ${columnsVisibility.referenceNumber ? "<th>Reference No</th>" : ""}
-                ${columnsVisibility.location ? "<th>Location</th>" : ""}
                 ${columnsVisibility.vendor ? "<th>Vendor</th>" : ""}
                 ${columnsVisibility.status ? "<th>Status</th>" : ""}
                 ${columnsVisibility.totalItems ? "<th>Total Items</th>" : ""}
+                ${columnsVisibility.shippedItems ? "<th>Shipped Items</th>" : ""}
                 ${columnsVisibility.addedBy ? "<th>Added By</th>" : ""}
               </tr>
             </thead>
             <tbody>
-              ${purchases
-                .map(
-                  (purchase) => `
-                <tr>
-                  ${columnsVisibility.purchaseOrderId ? `<td>${purchase.franchisePurchaseOrderId}</td>` : ""}
-                  ${columnsVisibility.date ? `<td>${purchase.orderDate}</td>` : ""}
-                  ${columnsVisibility.referenceNumber ? `<td>${purchase.referenceNumber}</td>` : ""}
-                  ${columnsVisibility.location ? `<td>${purchase.location}</td>` : ""}
-                  ${columnsVisibility.vendor ? `<td>${purchase.vendor}</td>` : ""}
-                  ${
-                    columnsVisibility.status
-                      ? `<td>${
-                          purchase.status === 0
-                            ? "Ordered"
-                            : purchase.status === 1
-                              ? "Accepted"
-                              : purchase.status === 2
-                                ? "Rejected"
-                                : purchase.status === 3
-                                  ? "Shipped"
-                                  : purchase.status === 4
-                                    ? "Delivered"
-                                    : "Received"
-                        }</td>`
-                      : ""
-                  }
-                  ${columnsVisibility.totalItems ? `<td>${purchase.totalItems}</td>` : ""}
-                  ${columnsVisibility.addedBy ? `<td>${purchase.addedBy}</td>` : ""}
-                </tr>
-              `
-                )
+              ${filteredPurchases
+                .slice(startIndex, endIndex)
+                .map((purchase) => {
+                  const getStatusClass = (status) => {
+                    switch (status) {
+                      case 0: return 'status-ordered';
+                      case 1: return 'status-accepted';
+                      case 2: return 'status-rejected';
+                      case 3: return 'status-shipped';
+                      case 4: return 'status-delivered';
+                      case 5: return 'status-received';
+                      default: return '';
+                    }
+                  };
+                  
+                  const getStatusText = (status) => {
+                    switch (status) {
+                      case 0: return "Ordered";
+                      case 1: return "Accepted";
+                      case 2: return "Rejected";
+                      case 3: return "Shipped";
+                      case 4: return "Delivered";
+                      case 5: return "Received";
+                      default: return "Unknown";
+                    }
+                  };
+                  
+                  return `
+                    <tr>
+                      ${columnsVisibility.purchaseOrderId ? `<td>${purchase.franchisePurchaseOrderId}</td>` : ""}
+                      ${columnsVisibility.date ? `<td>${purchase.orderDate}</td>` : ""}
+                      ${columnsVisibility.referenceNumber ? `<td>${purchase.referenceNumber}</td>` : ""}
+                      ${columnsVisibility.vendor ? `<td>${purchase.vendor}</td>` : ""}
+                      ${
+                        columnsVisibility.status
+                          ? `<td class="${getStatusClass(purchase.status)}">${getStatusText(purchase.status)}</td>`
+                          : ""
+                      }
+                      ${columnsVisibility.totalItems ? `<td>${purchase.totalItems}</td>` : ""}
+                      ${columnsVisibility.shippedItems ? `<td>${purchase.totalShippedItems || 0}</td>` : ""}
+                      ${columnsVisibility.addedBy ? `<td>${purchase.addedBy}</td>` : ""}
+                    </tr>
+                  `;
+                })
                 .join("")}
             </tbody>
           </table>
@@ -380,7 +431,6 @@ const ListPurchaseOrder = () => {
     printWindow.document.write(tableContent);
     printWindow.document.close();
     printWindow.print();
-    printWindow.close();
   };
 
   const toggleColumn = (column) => {
@@ -395,6 +445,32 @@ const ListPurchaseOrder = () => {
     setCurrentPage(1);
   };
 
+  const totalPages = Math.ceil(filteredPurchases.length / entriesPerPage);
+
+  const getStatusBadgeClass = (status) => {
+    switch (status) {
+      case 0: return 'badge-warning'; // Ordered
+      case 1: return 'badge-success'; // Accepted
+      case 2: return 'badge-danger'; // Rejected
+      case 3: return 'badge-info'; // Shipped
+      case 4: return 'badge-primary'; // Delivered
+      case 5: return 'badge-secondary'; // Received
+      default: return 'badge-secondary';
+    }
+  };
+
+  const getStatusText = (status) => {
+    switch (status) {
+      case 0: return "Ordered";
+      case 1: return "Accepted";
+      case 2: return "Rejected";
+      case 3: return "Shipped";
+      case 4: return "Delivered";
+      case 5: return "Received";
+      default: return "Unknown";
+    }
+  };
+
   return (
     <div className="wrapper">
       <div className="content-wrapper">
@@ -407,6 +483,115 @@ const ListPurchaseOrder = () => {
                   Manage Purchase Orders
                 </span>
               </div>
+            </div>
+          </div>
+        </section>
+
+        {/* Filter Component */}
+        <section className="content">
+          <div className="container-fluid py-2">
+            <div className="card card-default rounded-4 border-0 cardHover">
+              <div
+                className="my- p-3 d-flex align-items-center"
+                style={{
+                  cursor: "pointer",
+                  fontWeight: "bold",
+                }}
+                onClick={() => setOpen(!open)}
+              >
+                <i className={`fa fa-filter me-3`}></i>
+                <span>Filter</span>
+              </div>
+
+              <Collapse in={open}>
+                <div className="border-top">
+                  <div className="card-body">
+                    <div className="row py-2 g-2">
+                      {/* Status Dropdown */}
+                      <div className="col-md-3">
+                        <div className="form-group">
+                          <label className="me-2">Status:</label>
+                          <select
+                            className="form-select"
+                            name="status"
+                            value={activeFilters.status}
+                            onChange={handleFilterChange}
+                          >
+                            <option value="">All Status</option>
+                            {filterValues.statuses.map((status, index) => (
+                              <option key={`status-${index}`} value={status}>
+                                {status}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
+
+                      {/* Vendor Dropdown */}
+                      <div className="col-md-3">
+                        <div className="form-group">
+                          <label className="me-2">Vendor:</label>
+                          <select
+                            className="form-select"
+                            name="vendor"
+                            value={activeFilters.vendor}
+                            onChange={handleFilterChange}
+                          >
+                            <option value="">All Vendors</option>
+                            {filterValues.vendors.map((vendor, index) => (
+                              <option key={`vendor-${index}`} value={vendor}>
+                                {vendor}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
+
+                      {/* Start Date */}
+                      <div className="col-md-3">
+                        <div className="form-group">
+                          <label className="me-2">Start Date:</label>
+                          <input
+                            type="date"
+                            className="form-control"
+                            name="startDate"
+                            value={activeFilters.startDate}
+                            onChange={handleFilterChange}
+                          />
+                        </div>
+                      </div>
+
+                      {/* End Date */}
+                      <div className="col-md-3">
+                        <div className="form-group">
+                          <label className="me-2">End Date:</label>
+                          <input
+                            type="date"
+                            className="form-control"
+                            name="endDate"
+                            value={activeFilters.endDate}
+                            onChange={handleFilterChange}
+                          />
+                        </div>
+                      </div>
+
+                      {/* Reset Button */}
+                      <div className="col-12 mt-3">
+                        <button
+                          className="btn btn-sm btn-outline-secondary"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            resetFilters();
+                          }}
+                          disabled={!Object.values(activeFilters).some(Boolean)}
+                        >
+                          <i className="fa fa-times me-1"></i> Reset All Filters
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </Collapse>
             </div>
           </div>
         </section>
@@ -480,26 +665,37 @@ const ListPurchaseOrder = () => {
                         className="dropdown-menu pointer-event"
                         aria-labelledby="dropdownMenuButton"
                       >
-                        {Object.keys(columnsVisibility).map((col) => (
+                        {Object.entries({
+                          action: "Action",
+                          purchaseOrderId: "Order ID",
+                          status: "Status",
+                          date: "Ordered Date",
+                          expectedDate: "Expected Delivery Date",
+                          referenceNumber: "Reference No",
+                          vendor: "Vendor",
+                          totalItems: "Total Items",
+                          shippedItems: "Shipped Items",
+                          additionalNotes: "Additional Notes",
+                          addedBy: "Added By",
+                        }).map(([key, label]) => (
                           <div
-                            key={col}
+                            key={key}
                             className="dropdown-item d-flex align-items-center"
                           >
                             <input
                               type="checkbox"
-                              checked={columnsVisibility[col]}
-                              onChange={() => toggleColumn(col)}
+                              checked={columnsVisibility[key]}
+                              onChange={() => toggleColumn(key)}
                               className="mr-2"
                             />
-                            {col
-                              .replace(/([A-Z])/g, " $1")
-                              .replace(/^./, (str) => str.toUpperCase())}
+                            {label}
                           </div>
                         ))}
                       </div>
                     </div>
                   </div>
                 </div>
+                
                 <div id="table-container" style={{ overflowX: "auto" }}>
                   <table
                     id="example1"
@@ -508,7 +704,7 @@ const ListPurchaseOrder = () => {
                     <thead>
                       <tr>
                         {columnsVisibility.action && <th>Action</th>}
-                        {columnsVisibility.purchaseOrderId && <th>Order Id</th>}
+                        {columnsVisibility.purchaseOrderId && <th>Order ID</th>}
                         {columnsVisibility.status && <th>Status</th>}
                         {columnsVisibility.date && <th>Ordered Date</th>}
                         {columnsVisibility.expectedDate && (
@@ -517,7 +713,6 @@ const ListPurchaseOrder = () => {
                         {columnsVisibility.referenceNumber && (
                           <th>Reference No</th>
                         )}
-                        {/* {columnsVisibility.location && <th>Location</th>} */}
                         {columnsVisibility.vendor && <th>Vendor</th>}
                         {columnsVisibility.totalItems && <th>Total Items</th>}
                         {columnsVisibility.shippedItems && (
@@ -601,19 +796,9 @@ const ListPurchaseOrder = () => {
                           )}
                           {columnsVisibility.status && (
                             <td>
-                              {purchase.status === 0
-                                ? "Ordered"
-                                : purchase.status === 1
-                                  ? "Accepted"
-                                  : purchase.status === 2
-                                    ? "Rejected"
-                                    : purchase.status === 3
-                                      ? "Shipped"
-                                      : purchase.status === 4
-                                        ? "Delivered"
-                                        : purchase.status === 5
-                                          ? "Received"
-                                          : "Unknown"}
+                              <span className={`badge ${getStatusBadgeClass(purchase.status)}`}>
+                                {getStatusText(purchase.status)}
+                              </span>
                             </td>
                           )}
                           {columnsVisibility.date && (
@@ -625,9 +810,6 @@ const ListPurchaseOrder = () => {
                           {columnsVisibility.referenceNumber && (
                             <td>{purchase.referenceNumber}</td>
                           )}
-                          {/* {columnsVisibility.location && (
-                            <td>{purchase.location}</td>
-                          )} */}
                           {columnsVisibility.vendor && (
                             <td>{purchase.vendor}</td>
                           )}
@@ -647,6 +829,34 @@ const ListPurchaseOrder = () => {
                       ))}
                     </tbody>
                   </table>
+                  
+                  {/* Pagination Info */}
+                  <div className="d-flex justify-content-between align-items-center mt-3">
+                    <div>
+                      Showing {startIndex + 1} to{" "}
+                      {Math.min(endIndex, filteredPurchases.length)} of{" "}
+                      {filteredPurchases.length} entries
+                    </div>
+                    <div className="d-flex align-items-center">
+                      <button
+                        className="btn btn-sm btn-outline-secondary mx-1"
+                        onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                        disabled={currentPage === 1}
+                      >
+                        Previous
+                      </button>
+                      <span className="mx-2">
+                        Page {currentPage} of {totalPages}
+                      </span>
+                      <button
+                        className="btn btn-sm btn-outline-secondary mx-1"
+                        onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                        disabled={currentPage === totalPages}
+                      >
+                        Next
+                      </button>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>

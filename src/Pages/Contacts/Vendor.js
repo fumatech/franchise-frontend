@@ -1,17 +1,17 @@
 import React, { useEffect, useState } from "react";
-
 import { saveAs } from "file-saver";
 import { jsPDF } from "jspdf";
 import "jspdf-autotable";
 import * as XLSX from "xlsx";
 import "bootstrap/dist/css/bootstrap.min.css";
-
 import axios from "axios";
 import { Link, useNavigate } from "react-router-dom";
+import Collapse from "react-bootstrap/Collapse";
 
 function Vendor({ userRoles }) {
-  const [vendors, setVendors] = useState([]); // State to store vendor data
-
+  const [vendors, setVendors] = useState([]);
+  const [filteredVendors, setFilteredVendors] = useState([]);
+  
   const [columnsVisibility, setColumnsVisibility] = useState({
     name: true,
     address: true,
@@ -23,12 +23,29 @@ function Vendor({ userRoles }) {
     shopActNumber: true,
     cinNumber: true,
     panNumber: true,
+    status: true,
   });
 
   const [entriesPerPage, setEntriesPerPage] = useState(25);
   const [currentPage, setCurrentPage] = useState(1);
+  const [open, setOpen] = useState(false);
+  const navigate = useNavigate();
 
-  const navigate = useNavigate(); // Initialize navigate
+  // Filter states
+  const [filterValues, setFilterValues] = useState({
+    statuses: ["Active", "Inactive"],
+    cities: [],
+    states: [],
+    countries: [],
+  });
+
+  const [activeFilters, setActiveFilters] = useState({
+    status: "",
+    city: "",
+    state: "",
+    country: "",
+    search: "",
+  });
 
   // Fetch vendors data from API
   useEffect(() => {
@@ -37,16 +54,28 @@ function Vendor({ userRoles }) {
         const response = await axios.get(
           `https://fusionmastertech.com:8443/business-details/getall`
         );
-        setVendors(response.data); // Update state with fetched data
+        const vendorsData = response.data;
+        setVendors(vendorsData);
+        setFilteredVendors(vendorsData);
+
+        // Extract filter values
+        const cities = [...new Set(vendorsData.map((item) => item.city))].filter(Boolean);
+        const states = [...new Set(vendorsData.map((item) => item.state))].filter(Boolean);
+        const countries = [...new Set(vendorsData.map((item) => item.country))].filter(Boolean);
+
+        setFilterValues({
+          statuses: ["Active", "Inactive"],
+          cities,
+          states,
+          countries,
+        });
 
         // Add external script directly
         const script = document.createElement("script");
         script.src = "js/JqueryContent.js";
         script.async = true;
-
         document.body.appendChild(script);
 
-        // Cleanup function to remove the script element when the component is unmounted
         return () => {
           document.body.removeChild(script);
         };
@@ -58,25 +87,81 @@ function Vendor({ userRoles }) {
     fetchVendors();
   }, []);
 
+  // Apply filters whenever activeFilters or vendors change
+  useEffect(() => {
+    let result = vendors;
+
+    // Apply search filter
+    if (activeFilters.search) {
+      const searchTerm = activeFilters.search.toLowerCase();
+      result = result.filter((vendor) =>
+        Object.values(vendor).some(
+          (value) =>
+            value &&
+            value.toString().toLowerCase().includes(searchTerm)
+        )
+      );
+    }
+
+    // Apply other filters
+    if (activeFilters.status) {
+      const isActive = activeFilters.status === "Active";
+      result = result.filter((vendor) => vendor.isActive === isActive);
+    }
+
+    if (activeFilters.city) {
+      result = result.filter((vendor) => vendor.city === activeFilters.city);
+    }
+
+    if (activeFilters.state) {
+      result = result.filter((vendor) => vendor.state === activeFilters.state);
+    }
+
+    if (activeFilters.country) {
+      result = result.filter((vendor) => vendor.country === activeFilters.country);
+    }
+
+    setFilteredVendors(result);
+    setCurrentPage(1); // Reset to first page when filters change
+  }, [activeFilters, vendors]);
+
+  const handleFilterChange = (e) => {
+    const { name, value } = e.target;
+    setActiveFilters((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
+  };
+
+  const resetFilters = () => {
+    setActiveFilters({
+      status: "",
+      city: "",
+      state: "",
+      country: "",
+      search: "",
+    });
+  };
+
   const exportCSV = () => {
-    const csvData = vendors.map((vendor) => ({
-      FirmName: vendor.firmName,
-      "Vendord Id": vendor.vendorId,
+    const csvData = filteredVendors.map((vendor) => ({
+      FirmName: vendor.firmName || vendor.name,
+      "Vendor Id": vendor.vendorId,
       Email: vendor.email,
-      "Mobile Number": vendor.mobileNumber,
-      Address: vendor.permanentAddress,
+      "Mobile Number": vendor.mobileNumber || vendor.phoneNumber,
+      Address: vendor.permanentAddress || vendor.address,
       City: vendor.city,
       State: vendor.state,
       Country: vendor.country,
-      "Tax Number": vendor.taxNumber,
+      "Tax Number": vendor.taxNumber || vendor.taxOrGstNumber,
       "Zip Code": vendor.zipCode,
-      "Is Active": vendor.isActive ? "Yes" : "No",
+      Status: vendor.isActive ? "Active" : "Inactive",
     }));
 
     const csv = [
       [
         "Firm Name",
-        "Authority Person",
+        "Vendor Id",
         "Email",
         "Mobile Number",
         "Address",
@@ -85,7 +170,7 @@ function Vendor({ userRoles }) {
         "Country",
         "Tax Number",
         "Zip Code",
-        "Is Active",
+        "Status",
       ],
       ...csvData.map((row) => Object.values(row)),
     ]
@@ -97,7 +182,7 @@ function Vendor({ userRoles }) {
   };
 
   const exportExcel = () => {
-    const ws = XLSX.utils.json_to_sheet(vendors);
+    const ws = XLSX.utils.json_to_sheet(filteredVendors);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Vendors");
     XLSX.writeFile(wb, "vendors.xlsx");
@@ -125,7 +210,6 @@ function Vendor({ userRoles }) {
       head: [
         [
           "Firm Name",
-          "Authority Person",
           "Email",
           "Mobile Number",
           "Address",
@@ -134,21 +218,20 @@ function Vendor({ userRoles }) {
           "Country",
           "Tax Number",
           "Zip Code",
-          "Is Active",
+          "Status",
         ],
       ],
-      body: vendors.map((vendor) => [
-        vendor.name,
-        vendor.vendorId,
+      body: filteredVendors.map((vendor) => [
+        vendor.name || vendor.firmName,
         vendor.email,
-        vendor.mobileNumber,
-        vendor.permanentAddress,
+        vendor.mobileNumber || vendor.phoneNumber,
+        vendor.address || vendor.permanentAddress,
         vendor.city,
         vendor.state,
         vendor.country,
-        vendor.taxNumber,
+        vendor.taxNumber || vendor.taxOrGstNumber,
         vendor.zipCode,
-        vendor.isActive ? "Yes" : "No",
+        vendor.isActive ? "Active" : "Inactive",
       ]),
     });
     doc.save("vendors.pdf");
@@ -163,15 +246,15 @@ function Vendor({ userRoles }) {
 
   const handleEntriesChange = (e) => {
     setEntriesPerPage(Number(e.target.value));
-    setCurrentPage(1); // Reset to the first page when entries per page changes
+    setCurrentPage(1);
   };
 
   const handleEdit = (id) => {
-    navigate(`/EditVendor/${id}`); // Navigate to the edit page with the vendor ID
+    navigate(`/EditVendor/${id}`);
   };
 
   const handleView = (id) => {
-    navigate(`/ViewVendor/${id}`); // Navigate to the view page with the vendor ID
+    navigate(`/ViewVendor/${id}`);
   };
 
   const handleDelete = (id) => {
@@ -193,21 +276,22 @@ function Vendor({ userRoles }) {
 
   const startIndex = (currentPage - 1) * entriesPerPage;
   const endIndex = startIndex + entriesPerPage;
-  const displayedVendors = vendors.slice(startIndex, endIndex);
+  const displayedVendors = filteredVendors.slice(startIndex, endIndex);
 
   const handleDropdownItemClick = (col, e) => {
-    e.stopPropagation(); // Prevent the event from bubbling up and affecting the dropdown toggle
-    toggleColumn(col); // Toggle column visibility
+    e.stopPropagation();
+    toggleColumn(col);
   };
+
   return (
-    <div className="wrapper " style={{ maxHeight: "", overflowY: "auto" }}>
+    <div className="wrapper" style={{ maxHeight: "", overflowY: "auto" }}>
       <div className="content-wrapper">
         <section className="content-header">
           <div className="container-fluid">
             <div className="row mb-2">
               <div className="col-sm-6">
-                <h1 className="all-heading m-0 ">Vendors</h1>
-                <span className="display-inline sub-heading ">
+                <h1 className="all-heading m-0">Vendors</h1>
+                <span className="display-inline sub-heading">
                   Manage Vendors
                 </span>
               </div>
@@ -215,17 +299,146 @@ function Vendor({ userRoles }) {
           </div>
         </section>
         <section className="content">
-          <div className="container-fluid">
+          <div className="container-fluid py-2">
+            {/* Filter Component */}
+            <div className="card card-default rounded-4 border-0 cardHover">
+              <div
+                className="my- p-3 d-flex align-items-center"
+                style={{
+                  cursor: "pointer",
+                  fontWeight: "bold",
+                }}
+                onClick={() => setOpen(!open)}
+              >
+                <i className={`fa fa-filter me-3`}></i>
+                <span>Filter</span>
+              </div>
+
+              <Collapse in={open}>
+                <div className="border-top">
+                  <div className="card-body">
+                    {/* Search Input */}
+                    <div className="row mb-3">
+                      <div className="col-md-12">
+                        <div className="form-group">
+                          <label className="me-2">Search:</label>
+                          <input
+                            type="text"
+                            className="form-control"
+                            name="search"
+                            placeholder="Search in all fields..."
+                            value={activeFilters.search}
+                            onChange={handleFilterChange}
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="row py-2 g-2">
+                      {/* Status Dropdown */}
+                      <div className="col-md-3">
+                        <div className="form-group">
+                          <label className="me-2">Status:</label>
+                          <select
+                            className="form-select"
+                            name="status"
+                            value={activeFilters.status}
+                            onChange={handleFilterChange}
+                          >
+                            <option value="">All</option>
+                            {filterValues.statuses.map((status, index) => (
+                              <option key={`status-${index}`} value={status}>
+                                {status}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
+
+                      {/* City Dropdown */}
+                      <div className="col-md-3">
+                        <div className="form-group">
+                          <label className="me-2">City:</label>
+                          <select
+                            className="form-select"
+                            name="city"
+                            value={activeFilters.city}
+                            onChange={handleFilterChange}
+                          >
+                            <option value="">All</option>
+                            {filterValues.cities.map((city, index) => (
+                              <option key={`city-${index}`} value={city}>
+                                {city}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
+
+                      {/* State Dropdown */}
+                      <div className="col-md-3">
+                        <div className="form-group">
+                          <label className="me-2">State:</label>
+                          <select
+                            className="form-select"
+                            name="state"
+                            value={activeFilters.state}
+                            onChange={handleFilterChange}
+                          >
+                            <option value="">All</option>
+                            {filterValues.states.map((state, index) => (
+                              <option key={`state-${index}`} value={state}>
+                                {state}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
+
+                      {/* Country Dropdown */}
+                      <div className="col-md-3">
+                        <div className="form-group">
+                          <label className="me-2">Country:</label>
+                          <select
+                            className="form-select"
+                            name="country"
+                            value={activeFilters.country}
+                            onChange={handleFilterChange}
+                          >
+                            <option value="">All</option>
+                            {filterValues.countries.map((country, index) => (
+                              <option key={`country-${index}`} value={country}>
+                                {country}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
+
+                      {/* Reset Button */}
+                      <div className="col-12 mt-3">
+                        <button
+                          className="btn btn-sm btn-outline-secondary"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            resetFilters();
+                          }}
+                          disabled={!Object.values(activeFilters).some(Boolean)}
+                        >
+                          <i className="fa fa-times me-1"></i> Reset All Filters
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </Collapse>
+            </div>
+
             <div className="card cardHover rounded-4 border-0">
-              {/* <div className="text-right">
-                <Link to="/AddVendor" className="btn btn-add">
-                  <i className="fas fa-plus"></i> Add
-                </Link>
-              </div> */}
               <div className="card-body">
                 <div className="row mb-3 d-flex align-items-center">
                   <div className="col-12 col-md-auto form-group mb-2 d-flex align-items-center text-bold mt-2 mb-2 mr-2">
-                    <label htmlFor="entriesPerPage" className="mb-0  mr-2">
+                    <label htmlFor="entriesPerPage" className="mb-0 mr-2">
                       Show
                     </label>
                     <select
@@ -307,7 +520,7 @@ function Vendor({ userRoles }) {
                   </div>
                 </div>
 
-                <div id="table-container " style={{ overflowX: "auto" }}>
+                <div id="table-container" style={{ overflowX: "auto" }}>
                   <table
                     id="example1"
                     className="table table-bordered table-hover"
@@ -328,13 +541,13 @@ function Vendor({ userRoles }) {
                         )}
                         {columnsVisibility.cinNumber && <th>CIN Number</th>}
                         {columnsVisibility.panNumber && <th>PAN Number</th>}
+                        {columnsVisibility.status && <th>Status</th>}
                       </tr>
                     </thead>
 
                     <tbody>
                       {displayedVendors.map((vendor) => (
                         <tr key={vendor.id}>
-                          {/* Dropdown inside Actions Column */}
                           <td className="text-center">
                             <div className="dropdown">
                               <button
@@ -357,48 +570,23 @@ function Vendor({ userRoles }) {
                                     </div>
                                   </button>
                                 </li>
-
-                                {/* <li>
-                                  <button
-                                    className="dropdown-item"
-                                    onClick={() => handleEdit(vendor.id)}
-                                  >
-                                    <div className="d-inline-block w-75 btn-edit justify-content-center text-secondary">
-                                      <i className="dropdown_hover fa-solid fa-pen-to-square me-3"></i>
-                                      <span>Edit</span>
-                                    </div>
-                                  </button>
-                                </li>
-
-                                <li>
-                                  <button
-                                    className="dropdown-item text-danger"
-                                    onClick={() => handleDelete(vendor.id)}
-                                  >
-                                    <div className="d-inline-block w-75 btn-delete justify-content-center text-danger">
-                                      <i className="fa fa-trash me-3"></i>
-                                      <span>Delete</span>
-                                    </div>
-                                  </button>
-                                </li> */}
                               </ul>
                             </div>
                           </td>
 
-                          {columnsVisibility.name && <td>{vendor.name}</td>}
+                          {columnsVisibility.name && <td>{vendor.name || vendor.firmName}</td>}
                           {columnsVisibility.address && (
-                            <td>{vendor.address}</td>
+                            <td>{vendor.address || vendor.permanentAddress}</td>
                           )}
                           {columnsVisibility.email && <td>{vendor.email}</td>}
                           {columnsVisibility.phoneNumber && (
-                            <td>{vendor.phoneNumber}</td>
+                            <td>{vendor.phoneNumber || vendor.mobileNumber}</td>
                           )}
                           {columnsVisibility.website && (
                             <td>{vendor.website}</td>
                           )}
-
                           {columnsVisibility.taxOrGstNumber && (
-                            <td>{vendor.taxOrGstNumber}</td>
+                            <td>{vendor.taxOrGstNumber || vendor.taxNumber}</td>
                           )}
                           {columnsVisibility.shopActNumber && (
                             <td>{vendor.shopActNumber}</td>
@@ -409,10 +597,45 @@ function Vendor({ userRoles }) {
                           {columnsVisibility.panNumber && (
                             <td>{vendor.panNumber}</td>
                           )}
+                          {columnsVisibility.status && (
+                            <td>
+                              <span className={`badge ${vendor.isActive ? 'bg-success' : 'bg-danger'}`}>
+                                {vendor.isActive ? 'Active' : 'Inactive'}
+                              </span>
+                            </td>
+                          )}
                         </tr>
                       ))}
                     </tbody>
                   </table>
+                  
+                  {/* Pagination Info */}
+                  <div className="d-flex justify-content-between align-items-center mt-3">
+                    <div>
+                      Showing {startIndex + 1} to{" "}
+                      {Math.min(endIndex, filteredVendors.length)} of{" "}
+                      {filteredVendors.length} entries
+                    </div>
+                    <div className="d-flex align-items-center">
+                      <button
+                        className="btn btn-sm btn-outline-secondary mx-1"
+                        onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                        disabled={currentPage === 1}
+                      >
+                        Previous
+                      </button>
+                      <span className="mx-2">
+                        Page {currentPage} of {Math.ceil(filteredVendors.length / entriesPerPage)}
+                      </span>
+                      <button
+                        className="btn btn-sm btn-outline-secondary mx-1"
+                        onClick={() => setCurrentPage(prev => Math.min(prev + 1, Math.ceil(filteredVendors.length / entriesPerPage)))}
+                        disabled={currentPage === Math.ceil(filteredVendors.length / entriesPerPage)}
+                      >
+                        Next
+                      </button>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>

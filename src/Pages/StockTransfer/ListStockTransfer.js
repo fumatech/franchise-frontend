@@ -10,10 +10,12 @@ import { saveAs } from "file-saver";
 import { jsPDF } from "jspdf";
 import "jspdf-autotable";
 import * as XLSX from "xlsx";
-import $ from "jquery";
+import Collapse from "react-bootstrap/Collapse";
 
 const ListStockTransfer = () => {
   const [ListStockTransfer, setListStockTransfer] = useState([]);
+  const [filteredStockTransfer, setFilteredStockTransfer] = useState([]);
+  
   const [columnsVisibility, setColumnsVisibility] = useState({
     data: true,
     referenceNo: true,
@@ -25,10 +27,12 @@ const ListStockTransfer = () => {
     additionalNotes: true,
     action: true,
   });
-  const [modalType, setModalType] = useState(null); //"edit", or "view"
-  const [currentListStock, setCurrentListStock] = useState(null); // For viewing/editing
+  
+  const [modalType, setModalType] = useState(null);
+  const [currentListStock, setCurrentListStock] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [entriesPerPage, setEntriesPerPage] = useState(25);
+  const [open, setOpen] = useState(false);
   const [formData, setFormData] = useState({
     data: "",
     referenceNo: "",
@@ -38,6 +42,21 @@ const ListStockTransfer = () => {
     shippingCharges: "",
     totalAmount: "",
     additionalNotes: "",
+  });
+
+  // Filter states
+  const [filterValues, setFilterValues] = useState({
+    statuses: [],
+    locationsFrom: [],
+    locationsTo: [],
+  });
+
+  const [activeFilters, setActiveFilters] = useState({
+    status: "",
+    locationFrom: "",
+    locationTo: "",
+    startDate: "",
+    endDate: "",
   });
 
   useEffect(() => {
@@ -51,23 +70,43 @@ const ListStockTransfer = () => {
         }
         const data = await response.json();
         if (Array.isArray(data)) {
-          setListStockTransfer(data);
+          const processedData = data.map(item => ({
+            ...item,
+            // Ensure date is in proper format
+            transferDate: item.data || item.transferDate || new Date().toISOString().split('T')[0],
+            statusText: getStatusText(item.status)
+          }));
+          
+          setListStockTransfer(processedData);
+          setFilteredStockTransfer(processedData);
+
+          // Extract filter values
+          const statuses = [...new Set(processedData.map((item) => item.statusText))].filter(Boolean);
+          const locationsFrom = [...new Set(processedData.map((item) => item.locationFrom))].filter(Boolean);
+          const locationsTo = [...new Set(processedData.map((item) => item.locationTo))].filter(Boolean);
+
+          setFilterValues({
+            statuses,
+            locationsFrom,
+            locationsTo,
+          });
         } else {
           console.error("Fetched data is not an array");
           setListStockTransfer([]);
+          setFilteredStockTransfer([]);
         }
       } catch (error) {
         console.error("Error fetching units:", error);
         setListStockTransfer([]);
+        setFilteredStockTransfer([]);
       }
-      // Add external script directly without setTimeout
+      
+      // Add external script
       const script = document.createElement("script");
       script.src = "js/JqueryContent.js";
       script.async = true;
-
       document.body.appendChild(script);
 
-      // Cleanup function to remove the script element when the component is unmounted
       return () => {
         document.body.removeChild(script);
       };
@@ -76,21 +115,106 @@ const ListStockTransfer = () => {
     fetchStockTransfer();
   }, []);
 
+  // Apply filters whenever activeFilters or data changes
+  useEffect(() => {
+    let result = ListStockTransfer;
+
+    // Apply status filter
+    if (activeFilters.status) {
+      result = result.filter((item) => item.statusText === activeFilters.status);
+    }
+
+    // Apply location from filter
+    if (activeFilters.locationFrom) {
+      result = result.filter((item) => item.locationFrom === activeFilters.locationFrom);
+    }
+
+    // Apply location to filter
+    if (activeFilters.locationTo) {
+      result = result.filter((item) => item.locationTo === activeFilters.locationTo);
+    }
+
+    // Apply start date filter
+    if (activeFilters.startDate) {
+      result = result.filter((item) => {
+        const transferDate = new Date(item.transferDate || item.data);
+        const startDate = new Date(activeFilters.startDate);
+        return transferDate >= startDate;
+      });
+    }
+
+    // Apply end date filter
+    if (activeFilters.endDate) {
+      result = result.filter((item) => {
+        const transferDate = new Date(item.transferDate || item.data);
+        const endDate = new Date(activeFilters.endDate);
+        endDate.setHours(23, 59, 59, 999);
+        return transferDate <= endDate;
+      });
+    }
+
+    setFilteredStockTransfer(result);
+    setCurrentPage(1);
+  }, [activeFilters, ListStockTransfer]);
+
+  const getStatusText = (status) => {
+    if (typeof status === 'string') {
+      switch (status.toLowerCase()) {
+        case 'pending':
+        case '0': return 'Pending';
+        case 'sent':
+        case '1': return 'Sent';
+        case 'received':
+        case '2': return 'Received';
+        case 'completed':
+        case '3': return 'Completed';
+        case 'cancelled':
+        case '4': return 'Cancelled';
+        default: return status;
+      }
+    }
+    return status;
+  };
+
+  const handleFilterChange = (e) => {
+    const { name, value } = e.target;
+    setActiveFilters((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
+  };
+
+  const resetFilters = () => {
+    setActiveFilters({
+      status: "",
+      locationFrom: "",
+      locationTo: "",
+      startDate: "",
+      endDate: "",
+    });
+  };
+
+  const formatDate = (dateString) => {
+    if (!dateString) return "N/A";
+    const options = { year: "numeric", month: "short", day: "numeric" };
+    return new Date(dateString).toLocaleDateString(undefined, options);
+  };
+
   const exportCSV = () => {
-    const csvData = ListStockTransfer.map((StockTransfer) => ({
-      Data: StockTransfer.data,
-      ReferenceNo: StockTransfer.referenceNo,
-      LocationFrom: StockTransfer.locationFrom,
-      LocationTo: StockTransfer.locationTo,
-      Status: StockTransfer.status,
-      ShippingCharges: StockTransfer.shippingCharges,
-      TotalAmount: StockTransfer.totalAmount,
-      AdditionalNotes: StockTransfer.additionalNotes,
+    const csvData = filteredStockTransfer.map((StockTransfer) => ({
+      Date: formatDate(StockTransfer.data || StockTransfer.transferDate),
+      "Reference No": StockTransfer.referenceNo,
+      "Location (From)": StockTransfer.locationFrom,
+      "Location (To)": StockTransfer.locationTo,
+      Status: StockTransfer.statusText,
+      "Shipping Charges": StockTransfer.shippingCharges,
+      "Total Amount": StockTransfer.totalAmount,
+      "Additional Notes": StockTransfer.additionalNotes,
     }));
 
     const csv = [
       [
-        "Data",
+        "Date",
         "Reference No",
         "Location (From)",
         "Location (To)",
@@ -105,33 +229,32 @@ const ListStockTransfer = () => {
       .join("\n");
 
     const blob = new Blob([csv], { type: "text/csv" });
-    saveAs(blob, "ListStockTransfer.csv");
+    saveAs(blob, "StockTransfers.csv");
   };
 
   const exportExcel = () => {
     const ws = XLSX.utils.json_to_sheet(
-      ListStockTransfer.map((StockTransfer) => ({
-        Data: StockTransfer.data,
-        ReferenceNo: StockTransfer.referenceNo,
-        LocationFrom: StockTransfer.locationFrom,
-        LocationTo: StockTransfer.locationTo,
-        Status: StockTransfer.status,
-        ShippingCharges: StockTransfer.shippingCharges,
-        TotalAmount: StockTransfer.totalAmount,
-        AdditionalNotes: StockTransfer.additionalNotes,
+      filteredStockTransfer.map((StockTransfer) => ({
+        Date: formatDate(StockTransfer.data || StockTransfer.transferDate),
+        "Reference No": StockTransfer.referenceNo,
+        "Location (From)": StockTransfer.locationFrom,
+        "Location (To)": StockTransfer.locationTo,
+        Status: StockTransfer.statusText,
+        "Shipping Charges": StockTransfer.shippingCharges,
+        "Total Amount": StockTransfer.totalAmount,
+        "Additional Notes": StockTransfer.additionalNotes,
       }))
     );
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "ListStockTransfer");
-    XLSX.writeFile(wb, "ListStockTransfer.xlsx");
+    XLSX.utils.book_append_sheet(wb, ws, "StockTransfers");
+    XLSX.writeFile(wb, "StockTransfers.xlsx");
   };
 
   const exportPDF = () => {
     const doc = new jsPDF();
 
-    // Define the column headers
     const headers = [
-      "Data",
+      "Date",
       "Reference No",
       "Location (From)",
       "Location (To)",
@@ -141,22 +264,20 @@ const ListStockTransfer = () => {
       "Additional Notes",
     ];
 
-    // Map through the stock transfer data and prepare the body
-    const body = ListStockTransfer.slice(startIndex, endIndex).map(
+    const body = filteredStockTransfer.slice(startIndex, endIndex).map(
       (transfer) => [
-        transfer.data,
+        formatDate(transfer.data || transfer.transferDate),
         transfer.referenceNo,
         transfer.locationFrom,
         transfer.locationTo,
-        transfer.status,
+        transfer.statusText,
         transfer.shippingCharges,
         transfer.totalAmount,
-        transfer.additionalNotes,
+        transfer.additionalNotes || "None",
       ]
     );
 
-    // Add some space before the table
-    doc.text("Stock Transfer List", 14, 20); // Title with a slight offset
+    doc.text("Stock Transfer List", 14, 20);
     doc.setFontSize(12);
     doc.text(
       "Below is the list of stock transfers with their details:",
@@ -164,7 +285,6 @@ const ListStockTransfer = () => {
       30
     );
 
-    // Generate the PDF table with custom styles
     doc.autoTable({
       head: [headers],
       body: body,
@@ -177,17 +297,16 @@ const ListStockTransfer = () => {
         overflow: "linebreak",
       },
       headStyles: {
-        fillColor: [22, 160, 133], // Bootstrap success color
-        textColor: [255, 255, 255], // White text
+        fillColor: [22, 160, 133],
+        textColor: [255, 255, 255],
         fontStyle: "bold",
       },
       alternateRowStyles: {
-        fillColor: [240, 240, 240], // Light gray for alternate rows
+        fillColor: [240, 240, 240],
       },
-      margin: { top: 50 }, // Increase top margin for more space above the table
+      margin: { top: 50 },
     });
 
-    // Save the PDF
     doc.save("StockTransferList.pdf");
   };
 
@@ -211,6 +330,11 @@ const ListStockTransfer = () => {
             th, td { border: 1px solid #ddd; padding: 8px; }
             th { background-color: #f2f2f2; }
             th, td { text-align: left; }
+            .status-pending { color: #ff9800; }
+            .status-sent { color: #2196f3; }
+            .status-received { color: #4caf50; }
+            .status-completed { color: #673ab7; }
+            .status-cancelled { color: #f44336; }
           </style>
         </head>
         <body>
@@ -218,7 +342,7 @@ const ListStockTransfer = () => {
           <table>
             <thead>
               <tr>
-                ${columnsVisibility.data ? "<th>Data</th>" : ""}
+                ${columnsVisibility.data ? "<th>Date</th>" : ""}
                 ${columnsVisibility.referenceNo ? "<th>Reference No</th>" : ""}
                 ${
                   columnsVisibility.locationFrom
@@ -241,53 +365,65 @@ const ListStockTransfer = () => {
               </tr>
             </thead>
             <tbody>
-              ${ListStockTransfer.slice(startIndex, endIndex)
-                .map(
-                  (StockTransfer) => `
-                <tr>
-                  ${
-                    columnsVisibility.data
-                      ? `<td>${StockTransfer.data}</td>`
-                      : ""
-                  }
-                  ${
-                    columnsVisibility.referenceNo
-                      ? `<td>${StockTransfer.referenceNo}</td>`
-                      : ""
-                  }
-                  ${
-                    columnsVisibility.locationFrom
-                      ? `<td>${StockTransfer.locationFrom}</td>`
-                      : ""
-                  }
-                  ${
-                    columnsVisibility.locationTo
-                      ? `<td>${StockTransfer.locationTo}</td>`
-                      : ""
-                  }
-                  ${
-                    columnsVisibility.status
-                      ? `<td>${StockTransfer.status}</td>`
-                      : ""
-                  }
-                  ${
-                    columnsVisibility.shippingCharges
-                      ? `<td>${StockTransfer.shippingCharges}</td>`
-                      : ""
-                  }
-                  ${
-                    columnsVisibility.totalAmount
-                      ? `<td>${StockTransfer.totalAmount}</td>`
-                      : ""
-                  }
-                  ${
-                    columnsVisibility.additionalNotes
-                      ? `<td>${StockTransfer.additionalNotes}</td>`
-                      : ""
-                  }
-                </tr>
-              `
-                )
+              ${filteredStockTransfer.slice(startIndex, endIndex)
+                .map((StockTransfer) => {
+                  const getStatusClass = (status) => {
+                    const statusText = StockTransfer.statusText?.toLowerCase();
+                    switch (statusText) {
+                      case 'pending': return 'status-pending';
+                      case 'sent': return 'status-sent';
+                      case 'received': return 'status-received';
+                      case 'completed': return 'status-completed';
+                      case 'cancelled': return 'status-cancelled';
+                      default: return '';
+                    }
+                  };
+                  
+                  return `
+                    <tr>
+                      ${
+                        columnsVisibility.data
+                          ? `<td>${formatDate(StockTransfer.data || StockTransfer.transferDate)}</td>`
+                          : ""
+                      }
+                      ${
+                        columnsVisibility.referenceNo
+                          ? `<td>${StockTransfer.referenceNo}</td>`
+                          : ""
+                      }
+                      ${
+                        columnsVisibility.locationFrom
+                          ? `<td>${StockTransfer.locationFrom}</td>`
+                          : ""
+                      }
+                      ${
+                        columnsVisibility.locationTo
+                          ? `<td>${StockTransfer.locationTo}</td>`
+                          : ""
+                      }
+                      ${
+                        columnsVisibility.status
+                          ? `<td class="${getStatusClass(StockTransfer.status)}">${StockTransfer.statusText}</td>`
+                          : ""
+                      }
+                      ${
+                        columnsVisibility.shippingCharges
+                          ? `<td>${StockTransfer.shippingCharges}</td>`
+                          : ""
+                      }
+                      ${
+                        columnsVisibility.totalAmount
+                          ? `<td>${StockTransfer.totalAmount}</td>`
+                          : ""
+                      }
+                      ${
+                        columnsVisibility.additionalNotes
+                          ? `<td>${StockTransfer.additionalNotes || "None"}</td>`
+                          : ""
+                      }
+                    </tr>
+                  `;
+                })
                 .join("")}
             </tbody>
           </table>
@@ -298,7 +434,6 @@ const ListStockTransfer = () => {
     printWindow.document.write(tableContent);
     printWindow.document.close();
     printWindow.print();
-    printWindow.close();
   };
 
   const handleFormChange = (e) => {
@@ -311,7 +446,7 @@ const ListStockTransfer = () => {
 
   const handleEntriesChange = (e) => {
     setEntriesPerPage(Number(e.target.value));
-    setCurrentPage(1); // Reset to the first page when entries per page changes
+    setCurrentPage(1);
   };
 
   const startIndex = (currentPage - 1) * entriesPerPage;
@@ -341,8 +476,8 @@ const ListStockTransfer = () => {
             unit.id === updatedUnit.id ? updatedUnit : unit
           )
         );
-        closeModal(); // Close the modal
-        alert("Unit updated successfully!");
+        closeModal();
+        alert("Stock transfer updated successfully!");
       } else if (modalType === "add") {
         const response = await fetch(
           `${process.env.REACT_APP_BASE_URL}/ListStockTransfer/save`,
@@ -356,17 +491,17 @@ const ListStockTransfer = () => {
         );
 
         if (response.status !== 201) {
-          throw new Error("Failed to add unit");
+          throw new Error("Failed to add stock transfer");
         }
 
         const newUnit = await response.json();
         setListStockTransfer((prevUnits) => [...prevUnits, newUnit]);
         closeModal();
-        alert("Unit added successfully!");
+        alert("Stock transfer added successfully!");
       }
     } catch (error) {
-      console.error("Error saving unit:", error);
-      alert("Error saving unit");
+      console.error("Error saving stock transfer:", error);
+      alert("Error saving stock transfer");
     }
   };
 
@@ -416,7 +551,7 @@ const ListStockTransfer = () => {
   };
 
   const handleDelete = async (id) => {
-    if (window.confirm("Are you sure you want to delete this unit?")) {
+    if (window.confirm("Are you sure you want to delete this stock transfer?")) {
       try {
         const response = await fetch(
           `${process.env.REACT_APP_BASE_URL}/ListStockTransfer/delete/${id}`,
@@ -429,14 +564,30 @@ const ListStockTransfer = () => {
           setListStockTransfer((prevUnits) =>
             prevUnits.filter((unit) => unit.id !== id)
           );
-          alert("Unit deleted successfully!");
+          alert("Stock transfer deleted successfully!");
         } else {
-          alert("Failed to delete unit.");
+          alert("Failed to delete stock transfer.");
         }
       } catch (error) {
-        console.error("Error deleting unit:", error);
-        alert("Error deleting unit");
+        console.error("Error deleting stock transfer:", error);
+        alert("Error deleting stock transfer");
       }
+    }
+  };
+
+  const totalPages = Math.ceil(filteredStockTransfer.length / entriesPerPage);
+
+  const getStatusBadgeClass = (statusText) => {
+    if (!statusText) return 'badge-secondary';
+    
+    const status = statusText.toLowerCase();
+    switch (status) {
+      case 'pending': return 'badge-warning';
+      case 'sent': return 'badge-info';
+      case 'received': return 'badge-primary';
+      case 'completed': return 'badge-success';
+      case 'cancelled': return 'badge-danger';
+      default: return 'badge-secondary';
     }
   };
 
@@ -452,6 +603,136 @@ const ListStockTransfer = () => {
             </div>
           </div>
         </section>
+
+        {/* Filter Component */}
+        <section className="content">
+          <div className="container-fluid py-2">
+            <div className="card card-default rounded-4 border-0 cardHover">
+              <div
+                className="my- p-3 d-flex align-items-center"
+                style={{
+                  cursor: "pointer",
+                  fontWeight: "bold",
+                }}
+                onClick={() => setOpen(!open)}
+              >
+                <i className={`fa fa-filter me-3`}></i>
+                <span>Filter</span>
+              </div>
+
+              <Collapse in={open}>
+                <div className="border-top">
+                  <div className="card-body">
+                    <div className="row py-2 g-2">
+                      {/* Status Dropdown */}
+                      <div className="col-md-3">
+                        <div className="form-group">
+                          <label className="me-2">Status:</label>
+                          <select
+                            className="form-select"
+                            name="status"
+                            value={activeFilters.status}
+                            onChange={handleFilterChange}
+                          >
+                            <option value="">All Status</option>
+                            {filterValues.statuses.map((status, index) => (
+                              <option key={`status-${index}`} value={status}>
+                                {status}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
+
+                      {/* Location From Dropdown */}
+                      <div className="col-md-3">
+                        <div className="form-group">
+                          <label className="me-2">Location From:</label>
+                          <select
+                            className="form-select"
+                            name="locationFrom"
+                            value={activeFilters.locationFrom}
+                            onChange={handleFilterChange}
+                          >
+                            <option value="">All Locations</option>
+                            {filterValues.locationsFrom.map((location, index) => (
+                              <option key={`from-${index}`} value={location}>
+                                {location}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
+
+                      {/* Location To Dropdown */}
+                      <div className="col-md-3">
+                        <div className="form-group">
+                          <label className="me-2">Location To:</label>
+                          <select
+                            className="form-select"
+                            name="locationTo"
+                            value={activeFilters.locationTo}
+                            onChange={handleFilterChange}
+                          >
+                            <option value="">All Locations</option>
+                            {filterValues.locationsTo.map((location, index) => (
+                              <option key={`to-${index}`} value={location}>
+                                {location}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
+
+                      {/* Start Date */}
+                      <div className="col-md-3">
+                        <div className="form-group">
+                          <label className="me-2">Start Date:</label>
+                          <input
+                            type="date"
+                            className="form-control"
+                            name="startDate"
+                            value={activeFilters.startDate}
+                            onChange={handleFilterChange}
+                          />
+                        </div>
+                      </div>
+
+                      {/* End Date */}
+                      <div className="col-md-3">
+                        <div className="form-group">
+                          <label className="me-2">End Date:</label>
+                          <input
+                            type="date"
+                            className="form-control"
+                            name="endDate"
+                            value={activeFilters.endDate}
+                            onChange={handleFilterChange}
+                          />
+                        </div>
+                      </div>
+
+                      {/* Reset Button */}
+                      <div className="col-12 mt-3">
+                        <button
+                          className="btn btn-sm btn-outline-secondary"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            resetFilters();
+                          }}
+                          disabled={!Object.values(activeFilters).some(Boolean)}
+                        >
+                          <i className="fa fa-times me-1"></i> Reset All Filters
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </Collapse>
+            </div>
+          </div>
+        </section>
+
         <section className="content">
           <div className="container-fluid">
             <div className="card cardHover rounded-4 border-0">
@@ -525,24 +806,35 @@ const ListStockTransfer = () => {
                         className="dropdown-menu pointer-event"
                         aria-labelledby="dropdownMenuButton"
                       >
-                        {Object.keys(columnsVisibility).map((col) => (
+                        {Object.entries({
+                          action: "Action",
+                          data: "Date",
+                          referenceNo: "Reference No",
+                          locationFrom: "Location From",
+                          locationTo: "Location To",
+                          status: "Status",
+                          shippingCharges: "Shipping Charges",
+                          totalAmount: "Total Amount",
+                          additionalNotes: "Additional Notes",
+                        }).map(([key, label]) => (
                           <div
-                            key={col}
+                            key={key}
                             className="dropdown-item d-flex align-items-center"
                           >
                             <input
                               type="checkbox"
-                              checked={columnsVisibility[col]}
-                              onChange={() => toggleColumn(col)}
+                              checked={columnsVisibility[key]}
+                              onChange={() => toggleColumn(key)}
                               className="mr-2"
                             />
-                            {col.replace(/([A-Z])/g, " $1").toUpperCase()}
+                            {label}
                           </div>
                         ))}
                       </div>
                     </div>
                   </div>
                 </div>
+                
                 <div id="table-container" style={{ overflowX: "auto" }}>
                   <table
                     id="example1"
@@ -550,7 +842,8 @@ const ListStockTransfer = () => {
                   >
                     <thead>
                       <tr>
-                        {columnsVisibility.data && <th>Data</th>}
+                        {columnsVisibility.action && <th>Action</th>}
+                        {columnsVisibility.data && <th>Date</th>}
                         {columnsVisibility.referenceNo && <th>Reference No</th>}
                         {columnsVisibility.locationFrom && (
                           <th>Location (From)</th>
@@ -564,38 +857,12 @@ const ListStockTransfer = () => {
                         {columnsVisibility.additionalNotes && (
                           <th>Additional Notes</th>
                         )}
-                        {columnsVisibility.action && <th>Actions</th>}
                       </tr>
                     </thead>
                     <tbody>
-                      {ListStockTransfer.slice(startIndex, endIndex).map(
+                      {filteredStockTransfer.slice(startIndex, endIndex).map(
                         (StockTransfer) => (
                           <tr key={StockTransfer.id}>
-                            {columnsVisibility.data && (
-                              <td>{StockTransfer.data}</td>
-                            )}
-                            {columnsVisibility.referenceNo && (
-                              <td>{StockTransfer.referenceNo}</td>
-                            )}
-                            {columnsVisibility.locationFrom && (
-                              <td>{StockTransfer.locationFrom}</td>
-                            )}
-                            {columnsVisibility.locationTo && (
-                              <td>{StockTransfer.locationTo}</td>
-                            )}
-                            {columnsVisibility.status && (
-                              <td>{StockTransfer.status}</td>
-                            )}
-                            {columnsVisibility.shippingCharges && (
-                              <td>{StockTransfer.shippingCharges}</td>
-                            )}
-                            {columnsVisibility.totalAmount && (
-                              <td>{StockTransfer.totalAmount}</td>
-                            )}
-                            {columnsVisibility.additionalNotes && (
-                              <td>{StockTransfer.additionalNotes}</td>
-                            )}
-                            {/* action btn */}
                             {columnsVisibility.action && (
                               <td>
                                 <button
@@ -618,18 +885,48 @@ const ListStockTransfer = () => {
                                 </button>
                               </td>
                             )}
+                            {columnsVisibility.data && (
+                              <td>{formatDate(StockTransfer.data || StockTransfer.transferDate)}</td>
+                            )}
+                            {columnsVisibility.referenceNo && (
+                              <td>{StockTransfer.referenceNo}</td>
+                            )}
+                            {columnsVisibility.locationFrom && (
+                              <td>{StockTransfer.locationFrom}</td>
+                            )}
+                            {columnsVisibility.locationTo && (
+                              <td>{StockTransfer.locationTo}</td>
+                            )}
+                            {columnsVisibility.status && (
+                              <td>
+                                <span className={`badge ${getStatusBadgeClass(StockTransfer.statusText)}`}>
+                                  {StockTransfer.statusText}
+                                </span>
+                              </td>
+                            )}
+                            {columnsVisibility.shippingCharges && (
+                              <td>{StockTransfer.shippingCharges}</td>
+                            )}
+                            {columnsVisibility.totalAmount && (
+                              <td>{StockTransfer.totalAmount}</td>
+                            )}
+                            {columnsVisibility.additionalNotes && (
+                              <td>{StockTransfer.additionalNotes || "None"}</td>
+                            )}
                           </tr>
                         )
                       )}
                     </tbody>
                   </table>
+                  
+           
                 </div>
               </div>
             </div>
           </div>
         </section>
 
-        {/* modal */}
+        {/* Modal */}
         {modalType && (
           <div
             className="modal fade show"
@@ -645,10 +942,10 @@ const ListStockTransfer = () => {
                 <div className="modal-header">
                   <h5 className="modal-title" id="unitModalLabel">
                     {modalType === "add"
-                      ? "Add Unit"
+                      ? "Add Stock Transfer"
                       : modalType === "edit"
-                        ? "Edit Unit"
-                        : "View Unit"}
+                        ? "Edit Stock Transfer"
+                        : "View Stock Transfer"}
                   </h5>
                   <button
                     type="button"
@@ -669,14 +966,13 @@ const ListStockTransfer = () => {
                     {modalType === "edit" && (
                       <div>
                         <div className="form-group">
-                          <label htmlFor="data">Data</label>
+                          <label htmlFor="data">Date</label>
                           <input
-                            type="text"
+                            type="date"
                             className="form-control"
                             id="data"
                             value={formData.data}
                             onChange={handleFormChange}
-                            placeholder="Enter data"
                             required
                           />
                         </div>
@@ -718,15 +1014,20 @@ const ListStockTransfer = () => {
                         </div>
                         <div className="form-group">
                           <label htmlFor="status">Status</label>
-                          <input
-                            type="text"
+                          <select
                             className="form-control"
                             id="status"
                             value={formData.status}
                             onChange={handleFormChange}
-                            placeholder="Enter status"
                             required
-                          />
+                          >
+                            <option value="">Select Status</option>
+                            <option value="Pending">Pending</option>
+                            <option value="Sent">Sent</option>
+                            <option value="Received">Received</option>
+                            <option value="Completed">Completed</option>
+                            <option value="Cancelled">Cancelled</option>
+                          </select>
                         </div>
                         <div className="form-group">
                           <label htmlFor="shippingCharges">
@@ -772,7 +1073,7 @@ const ListStockTransfer = () => {
                     {modalType === "view" && currentListStock && (
                       <div>
                         <p>
-                          <strong>Data:</strong> {currentListStock.data}
+                          <strong>Date:</strong> {formatDate(currentListStock.data)}
                         </p>
                         <p>
                           <strong>Reference No:</strong>{" "}
@@ -787,7 +1088,10 @@ const ListStockTransfer = () => {
                           {currentListStock.locationTo}
                         </p>
                         <p>
-                          <strong>Status:</strong> {currentListStock.status}
+                          <strong>Status:</strong>{" "}
+                          <span className={`badge ${getStatusBadgeClass(currentListStock.statusText)}`}>
+                            {currentListStock.statusText}
+                          </span>
                         </p>
                         <p>
                           <strong>Shipping Charges:</strong>{" "}
@@ -799,7 +1103,7 @@ const ListStockTransfer = () => {
                         </p>
                         <p>
                           <strong>Additional Notes:</strong>{" "}
-                          {currentListStock.additionalNotes}
+                          {currentListStock.additionalNotes || "None"}
                         </p>
                       </div>
                     )}

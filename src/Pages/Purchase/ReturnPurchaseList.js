@@ -12,9 +12,12 @@ import "jspdf-autotable";
 import * as XLSX from "xlsx";
 import { Link, useNavigate } from "react-router-dom";
 import axios from "axios";
+import Collapse from "react-bootstrap/Collapse";
 
 const ReturnPurchaseList = () => {
   const [purchases, setPurchases] = useState([]);
+  const [filteredPurchases, setFilteredPurchases] = useState([]);
+  
   const [columnsVisibility, setColumnsVisibility] = useState({
     action: true,
     status: true,
@@ -30,9 +33,26 @@ const ReturnPurchaseList = () => {
     additionalNotes: true,
     addedBy: true,
   });
+  
   const [currentPage, setCurrentPage] = useState(1);
   const [entriesPerPage, setEntriesPerPage] = useState(25);
+  const [open, setOpen] = useState(false);
   const navigate = useNavigate();
+
+  // Filter states
+  const [filterValues, setFilterValues] = useState({
+    statuses: ["Ordered", "Accepted", "Rejected", "Completed"],
+    paymentStatuses: ["Pending", "Refund", "Credit Note", "Completed"],
+    vendors: [],
+  });
+
+  const [activeFilters, setActiveFilters] = useState({
+    status: "",
+    paymentStatus: "",
+    vendor: "",
+    startDate: "",
+    endDate: "",
+  });
 
   useEffect(() => {
     const fetchPurchases = async () => {
@@ -57,10 +77,38 @@ const ReturnPurchaseList = () => {
               )
                 ? item.totalAmount
                 : 0,
+              statusText: item.status === 0
+                ? "Ordered"
+                : item.status === 1
+                  ? "Accepted"
+                  : item.status === 2
+                    ? "Rejected"
+                    : item.status === 3
+                      ? "Completed"
+                      : "Unknown",
+              paymentStatusText: item.paymentStatus === 0
+                ? "Pending"
+                : item.paymentStatus === 1
+                  ? "Refund"
+                  : item.paymentStatus === 2
+                    ? "Credit Note"
+                    : item.paymentStatus === 3
+                      ? "Completed"
+                      : "Unknown"
             }))
             .sort((a, b) => b.id - a.id);
 
           setPurchases(filteredData);
+          setFilteredPurchases(filteredData);
+
+          // Extract filter values
+          const vendors = [...new Set(filteredData.map((item) => item.vendor))].filter(Boolean);
+
+          setFilterValues({
+            statuses: ["Ordered", "Accepted", "Rejected", "Completed"],
+            paymentStatuses: ["Pending", "Refund", "Credit Note", "Completed"],
+            vendors,
+          });
 
           // Load additional scripts after data is processed
           const script = document.createElement("script");
@@ -75,11 +123,86 @@ const ReturnPurchaseList = () => {
         }
       } catch (error) {
         console.error("Error fetching purchases:", error);
+        setPurchases([]);
+        setFilteredPurchases([]);
       }
     };
 
     fetchPurchases();
   }, []);
+
+  // Apply filters whenever activeFilters or purchases change
+  useEffect(() => {
+    let result = purchases;
+
+    // Apply status filter
+    if (activeFilters.status) {
+      const statusMap = {
+        "Ordered": 0,
+        "Accepted": 1,
+        "Rejected": 2,
+        "Completed": 3
+      };
+      
+      const statusValue = statusMap[activeFilters.status];
+      result = result.filter((purchase) => purchase.status === statusValue);
+    }
+
+    // Apply payment status filter
+    if (activeFilters.paymentStatus) {
+      const paymentStatusMap = {
+        "Pending": 0,
+        "Refund": 1,
+        "Credit Note": 2,
+        "Completed": 3
+      };
+      
+      const paymentStatusValue = paymentStatusMap[activeFilters.paymentStatus];
+      result = result.filter((purchase) => purchase.paymentStatus === paymentStatusValue);
+    }
+
+    // Apply vendor filter
+    if (activeFilters.vendor) {
+      result = result.filter((purchase) => purchase.vendor === activeFilters.vendor);
+    }
+
+    // Apply start date filter
+    if (activeFilters.startDate) {
+      result = result.filter((purchase) => {
+        const orderDate = new Date(purchase.orderDate);
+        const startDate = new Date(activeFilters.startDate);
+        return orderDate >= startDate;
+      });
+    }
+
+    // Apply end date filter
+    if (activeFilters.endDate) {
+      result = result.filter((purchase) => {
+        const orderDate = new Date(purchase.orderDate);
+        const endDate = new Date(activeFilters.endDate);
+        endDate.setHours(23, 59, 59, 999); // End of day
+        return orderDate <= endDate;
+      });
+    }
+
+    setFilteredPurchases(result);
+    setCurrentPage(1);
+  }, [activeFilters, purchases]);
+
+  const handleFilterChange = (e) => {
+    const { name, value } = e.target;
+    setActiveFilters((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const resetFilters = () => {
+    setActiveFilters({
+      status: "",
+      paymentStatus: "",
+      vendor: "",
+      startDate: "",
+      endDate: "",
+    });
+  };
 
   const formatDate = (dateString) => {
     if (!dateString) return "N/A";
@@ -117,11 +240,11 @@ const ReturnPurchaseList = () => {
             <tr><th>Field</th><th>Value</th></tr>
             <tr><td>Vendor</td><td>${purchase.vendor || "N/A"}</td></tr>
             <tr><td>Reference No</td><td>${purchase.referenceNumber || "N/A"}</td></tr>
-            <tr><td>Status</td><td>${purchase.status === 0 ? "Ordered" : purchase.status === 1 ? "Accepted" : purchase.status === 2 ? "Rejected" : purchase.status === 3 ? "Completed" : "Unknown"}</td></tr>
+            <tr><td>Status</td><td>${purchase.statusText}</td></tr>
             <tr><td>Total Items</td><td>${purchase.totalItems}</td></tr>
-            <tr><td>Total Amount</td><td>$${purchase.totalAmount?.toFixed(2) || "0.00"}</td></tr>
-            <tr><td>Payment Status</td><td>${purchase.paymentStatus || "N/A"}</td></tr>
-            <tr><td>Amount Due</td><td>$${purchase.amountDue?.toFixed(2) || "0.00"}</td></tr>
+            <tr><td>Total Amount</td><td>₹${purchase.totalAmount?.toFixed(2) || "0.00"}</td></tr>
+            <tr><td>Payment Status</td><td>${purchase.paymentStatusText}</td></tr>
+            <tr><td>Amount Due</td><td>₹${purchase.amountDue?.toFixed(2) || "0.00"}</td></tr>
             <tr><td>Additional Notes</td><td>${purchase.additionalNotes || "None"}</td></tr>
           </table>
           
@@ -143,8 +266,8 @@ const ReturnPurchaseList = () => {
     doc.text(`Return Receipt - ${purchase.returnNo}`, 10, 10);
     doc.text(`Date: ${formatDate(purchase.orderDate)}`, 10, 20);
     doc.text(`Vendor: ${purchase.vendor}`, 10, 30);
-    doc.text(`Total Amount: $${purchase.netTotalAmount?.toFixed(2)}`, 10, 40);
-    doc.text(`Status: ${purchase.paymentStatus}`, 10, 50);
+    doc.text(`Total Amount: ₹${purchase.netTotalAmount?.toFixed(2)}`, 10, 40);
+    doc.text(`Status: ${purchase.paymentStatusText}`, 10, 50);
     doc.save(`ReturnReceipt-${purchase.returnNo}.pdf`);
   };
 
@@ -159,9 +282,9 @@ const ReturnPurchaseList = () => {
         )
         .then(() => {
           setPurchases((prev) => prev.filter((p) => p.id !== id));
+          setFilteredPurchases((prev) => prev.filter((p) => p.id !== id));
           alert("Return cancelled successfully!");
         })
-
         .catch((error) => console.error("Error deleting return:", error));
     }
   };
@@ -190,14 +313,15 @@ const ReturnPurchaseList = () => {
   };
 
   const exportCSV = () => {
-    const csvData = purchases.map((purchase) => ({
-      "Return No": purchase.returnNo,
+    const csvData = filteredPurchases.map((purchase) => ({
+      "Return No": purchase.franchisePurchaseReturnId || purchase.returnNo,
       Date: formatDate(purchase.orderDate),
       "Reference No": purchase.referenceNumber,
       Vendor: purchase.vendor,
       "Total Items": purchase.totalItems,
       "Total Amount": purchase.netTotalAmount?.toFixed(2),
-      "Payment Status": purchase.paymentStatus,
+      "Status": purchase.statusText,
+      "Payment Status": purchase.paymentStatusText,
       "Amount Due": purchase.amountDue?.toFixed(2),
       "Added By": purchase.addedBy,
     }));
@@ -209,25 +333,16 @@ const ReturnPurchaseList = () => {
   };
 
   const exportExcel = () => {
-    const excelData = purchases.map((purchase) => ({
-      "Return No": purchase.returnNo,
+    const excelData = filteredPurchases.map((purchase) => ({
+      "Return No": purchase.franchisePurchaseReturnId || purchase.returnNo,
       Date: formatDate(purchase.orderDate),
       "Reference No": purchase.referenceNumber,
       Vendor: purchase.vendor,
       "Total Items": purchase.totalItems,
       "Total Amount": purchase.netTotalAmount?.toFixed(2),
-      "Payment Status": purchase.paymentStatus,
+      "Status": purchase.statusText,
+      "Payment Status": purchase.paymentStatusText,
       "Amount Due": purchase.amountDue?.toFixed(2),
-      Status:
-        purchase.status === 0
-          ? "Ordered"
-          : purchase.status === 1
-            ? "Accepted"
-            : purchase.status === 2
-              ? "Rejected"
-              : purchase.status === 3
-                ? "Completed"
-                : "Unknown",
       "Added By": purchase.addedBy,
       Notes: purchase.additionalNotes,
     }));
@@ -249,19 +364,21 @@ const ReturnPurchaseList = () => {
       "Vendor",
       "Total Items",
       "Total Amount",
+      "Status",
       "Payment Status",
       "Amount Due",
     ];
 
-    const data = purchases.map((purchase) => [
-      purchase.returnNo,
+    const data = filteredPurchases.map((purchase) => [
+      purchase.franchisePurchaseReturnId || purchase.returnNo,
       formatDate(purchase.orderDate),
       purchase.referenceNumber,
       purchase.vendor,
       purchase.totalItems,
-      `$${purchase.totalAmount?.toFixed(2)}`,
-      purchase.paymentStatus,
-      `$${purchase.amountDue?.toFixed(2)}`,
+      `₹${purchase.totalAmount?.toFixed(2)}`,
+      purchase.statusText,
+      purchase.paymentStatusText,
+      `₹${purchase.amountDue?.toFixed(2)}`,
     ]);
 
     doc.autoTable({
@@ -287,6 +404,14 @@ const ReturnPurchaseList = () => {
             th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
             th { background-color: #f2f2f2; }
             h1 { color: #333; }
+            .status-ordered { color: #ff9800; }
+            .status-accepted { color: #4caf50; }
+            .status-rejected { color: #f44336; }
+            .status-completed { color: #2196f3; }
+            .payment-pending { color: #ff9800; }
+            .payment-refund { color: #4caf50; }
+            .payment-credit { color: #2196f3; }
+            .payment-completed { color: #673ab7; }
           </style>
         </head>
         <body>
@@ -301,26 +426,58 @@ const ReturnPurchaseList = () => {
               </tr>
             </thead>
             <tbody>
-              ${purchases
-                .map(
-                  (purchase) => `
-                <tr>
-                  ${columnsVisibility.action ? `<td>View/Edit/Delete</td>` : ""}
-                  ${columnsVisibility.status ? `<td>${purchase.status === 0 ? "Ordered" : purchase.status === 1 ? "Accepted" : purchase.status === 2 ? "Rejected" : purchase.status === 3 ? "Completed" : "Unknown"}</td>` : ""}
-                  ${columnsVisibility.returnNo ? `<td>${purchase.returnNo}</td>` : ""}
-                  ${columnsVisibility.invoiceNo ? `<td>${purchase.invoiceNo || "N/A"}</td>` : ""}
-                  ${columnsVisibility.date ? `<td>${formatDate(purchase.orderDate)}</td>` : ""}
-                  ${columnsVisibility.referenceNumber ? `<td>${purchase.referenceNumber}</td>` : ""}
-                  ${columnsVisibility.vendor ? `<td>${purchase.vendor}</td>` : ""}
-                  ${columnsVisibility.totalItems ? `<td>${purchase.totalItems}</td>` : ""}
-                  ${columnsVisibility.totalAmount ? `<td>$${purchase.totalAmount?.toFixed(2)}</td>` : ""}
-                  ${columnsVisibility.paymentStatus ? `<td>${purchase.paymentStatus}</td>` : ""}
-                  ${columnsVisibility.amountDue ? `<td>$${purchase.amountDue?.toFixed(2)}</td>` : ""}
-                  ${columnsVisibility.additionalNotes ? `<td>${purchase.additionalNotes || "-"}</td>` : ""}
-                  ${columnsVisibility.addedBy ? `<td>${purchase.addedBy}</td>` : ""}
-                </tr>
-              `
+              ${filteredPurchases
+                .slice(
+                  (currentPage - 1) * entriesPerPage,
+                  currentPage * entriesPerPage
                 )
+                .map((purchase) => {
+                  const getStatusClass = (status) => {
+                    switch (status) {
+                      case 0: return 'status-ordered';
+                      case 1: return 'status-accepted';
+                      case 2: return 'status-rejected';
+                      case 3: return 'status-completed';
+                      default: return '';
+                    }
+                  };
+                  
+                  const getPaymentStatusClass = (paymentStatus) => {
+                    switch (paymentStatus) {
+                      case 0: return 'payment-pending';
+                      case 1: return 'payment-refund';
+                      case 2: return 'payment-credit';
+                      case 3: return 'payment-completed';
+                      default: return '';
+                    }
+                  };
+                  
+                  return `
+                    <tr>
+                      ${columnsVisibility.action ? `<td></td>` : ""}
+                      ${
+                        columnsVisibility.status 
+                          ? `<td class="${getStatusClass(purchase.status)}">${purchase.statusText}</td>` 
+                          : ""
+                      }
+                      ${columnsVisibility.returnNo ? `<td>${purchase.franchisePurchaseReturnId || purchase.returnNo}</td>` : ""}
+                      ${columnsVisibility.invoiceNo ? `<td>${purchase.invoiceNumber || "N/A"}</td>` : ""}
+                      ${columnsVisibility.date ? `<td>${formatDate(purchase.orderDate)}</td>` : ""}
+                      ${columnsVisibility.referenceNumber ? `<td>${purchase.referenceNumber}</td>` : ""}
+                      ${columnsVisibility.vendor ? `<td>${purchase.vendor}</td>` : ""}
+                      ${columnsVisibility.totalItems ? `<td>${purchase.totalItems}</td>` : ""}
+                      ${columnsVisibility.totalAmount ? `<td>₹${purchase.totalAmount?.toFixed(2)}</td>` : ""}
+                      ${
+                        columnsVisibility.paymentStatus 
+                          ? `<td class="${getPaymentStatusClass(purchase.paymentStatus)}">${purchase.paymentStatusText}</td>` 
+                          : ""
+                      }
+                      ${columnsVisibility.amountDue ? `<td>₹${purchase.amountDue?.toFixed(2)}</td>` : ""}
+                      ${columnsVisibility.additionalNotes ? `<td>${purchase.additionalNotes || "-"}</td>` : ""}
+                      ${columnsVisibility.addedBy ? `<td>${purchase.addedBy}</td>` : ""}
+                    </tr>
+                  `;
+                })
                 .join("")}
             </tbody>
           </table>
@@ -332,10 +489,35 @@ const ReturnPurchaseList = () => {
   };
 
   // Pagination
-  const indexOfLastItem = currentPage * entriesPerPage;
-  const indexOfFirstItem = indexOfLastItem - entriesPerPage;
-  const currentItems = purchases.slice(indexOfFirstItem, indexOfLastItem);
-  const totalPages = Math.ceil(purchases.length / entriesPerPage);
+  const startIndex = (currentPage - 1) * entriesPerPage;
+  const endIndex = startIndex + entriesPerPage;
+  const currentItems = filteredPurchases.slice(startIndex, endIndex);
+  const totalPages = Math.ceil(filteredPurchases.length / entriesPerPage);
+
+  const handleEntriesChange = (e) => {
+    setEntriesPerPage(Number(e.target.value));
+    setCurrentPage(1);
+  };
+
+  const getStatusBadgeClass = (status) => {
+    switch (status) {
+      case 0: return 'bg-warning'; // Ordered
+      case 1: return 'bg-success'; // Accepted
+      case 2: return 'bg-danger'; // Rejected
+      case 3: return 'bg-info'; // Completed
+      default: return 'bg-secondary';
+    }
+  };
+
+  const getPaymentStatusBadgeClass = (paymentStatus) => {
+    switch (paymentStatus) {
+      case 0: return 'bg-warning'; // Pending
+      case 1: return 'bg-primary'; // Refund
+      case 2: return 'bg-info'; // Credit Note
+      case 3: return 'bg-success'; // Completed
+      default: return 'bg-secondary';
+    }
+  };
 
   return (
     <div className="wrapper">
@@ -346,6 +528,135 @@ const ReturnPurchaseList = () => {
               <div className="col-12 col-md-6">
                 <h1 className="all-heading">Return Purchase List</h1>
               </div>
+            </div>
+          </div>
+        </section>
+
+        {/* Filter Component */}
+        <section className="content">
+          <div className="container-fluid py-2">
+            <div className="card card-default rounded-4 border-0 cardHover">
+              <div
+                className="my- p-3 d-flex align-items-center"
+                style={{
+                  cursor: "pointer",
+                  fontWeight: "bold",
+                }}
+                onClick={() => setOpen(!open)}
+              >
+                <i className={`fa fa-filter me-3`}></i>
+                <span>Filter</span>
+              </div>
+
+              <Collapse in={open}>
+                <div className="border-top">
+                  <div className="card-body">
+                    <div className="row py-2 g-2">
+                      {/* Status Dropdown */}
+                      <div className="col-md-3">
+                        <div className="form-group">
+                          <label className="me-2">Status:</label>
+                          <select
+                            className="form-select"
+                            name="status"
+                            value={activeFilters.status}
+                            onChange={handleFilterChange}
+                          >
+                            <option value="">All Status</option>
+                            {filterValues.statuses.map((status, index) => (
+                              <option key={`status-${index}`} value={status}>
+                                {status}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
+
+                      {/* Payment Status Dropdown */}
+                      <div className="col-md-3">
+                        <div className="form-group">
+                          <label className="me-2">Payment Status:</label>
+                          <select
+                            className="form-select"
+                            name="paymentStatus"
+                            value={activeFilters.paymentStatus}
+                            onChange={handleFilterChange}
+                          >
+                            <option value="">All Payment Status</option>
+                            {filterValues.paymentStatuses.map((status, index) => (
+                              <option key={`payment-${index}`} value={status}>
+                                {status}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
+
+                      {/* Vendor Dropdown */}
+                      <div className="col-md-3">
+                        <div className="form-group">
+                          <label className="me-2">Vendor:</label>
+                          <select
+                            className="form-select"
+                            name="vendor"
+                            value={activeFilters.vendor}
+                            onChange={handleFilterChange}
+                          >
+                            <option value="">All Vendors</option>
+                            {filterValues.vendors.map((vendor, index) => (
+                              <option key={`vendor-${index}`} value={vendor}>
+                                {vendor}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
+
+                      {/* Start Date */}
+                      <div className="col-md-3">
+                        <div className="form-group">
+                          <label className="me-2">Start Date:</label>
+                          <input
+                            type="date"
+                            className="form-control"
+                            name="startDate"
+                            value={activeFilters.startDate}
+                            onChange={handleFilterChange}
+                          />
+                        </div>
+                      </div>
+
+                      {/* End Date */}
+                      <div className="col-md-3">
+                        <div className="form-group">
+                          <label className="me-2">End Date:</label>
+                          <input
+                            type="date"
+                            className="form-control"
+                            name="endDate"
+                            value={activeFilters.endDate}
+                            onChange={handleFilterChange}
+                          />
+                        </div>
+                      </div>
+
+                      {/* Reset Button */}
+                      <div className="col-12 mt-3">
+                        <button
+                          className="btn btn-sm btn-outline-secondary"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            resetFilters();
+                          }}
+                          disabled={!Object.values(activeFilters).some(Boolean)}
+                        >
+                          <i className="fa fa-times me-1"></i> Reset All Filters
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </Collapse>
             </div>
           </div>
         </section>
@@ -369,10 +680,7 @@ const ReturnPurchaseList = () => {
                       id="entriesPerPage"
                       className="form-control form-control-sm mr-2"
                       value={entriesPerPage}
-                      onChange={(e) => {
-                        setEntriesPerPage(Number(e.target.value));
-                        setCurrentPage(1);
-                      }}
+                      onChange={handleEntriesChange}
                     >
                       <option value={25}>25</option>
                       <option value={50}>50</option>
@@ -407,7 +715,7 @@ const ReturnPurchaseList = () => {
                       <i className="fa fa-file-pdf mr-2"></i> PDF
                     </button>
 
-                    {/* Column Visibility Dropdown - matches your reference */}
+                    {/* Column Visibility Dropdown */}
                     <div className="dropdown mt-lg-2 mb-lg-2">
                       <button
                         className="btn Export-Btn dropdown-toggle"
@@ -511,7 +819,7 @@ const ReturnPurchaseList = () => {
                                   )}
 
                                   {["Refunded", "Credit Note Issued"].includes(
-                                    purchase.paymentStatus
+                                    purchase.paymentStatusText
                                   ) && (
                                     <Dropdown.Item
                                       onClick={() =>
@@ -539,33 +847,15 @@ const ReturnPurchaseList = () => {
                           {columnsVisibility.status && (
                             <td>
                               <span
-                                className={`badge ${
-                                  purchase.status === 0
-                                    ? "bg-warning"
-                                    : purchase.status === 1
-                                      ? "bg-success"
-                                      : purchase.status === 2
-                                        ? "bg-danger"
-                                        : purchase.status === 3
-                                          ? "bg-info"
-                                          : "bg-secondary"
-                                }`}
+                                className={`badge ${getStatusBadgeClass(purchase.status)}`}
                               >
-                                {purchase.status === 0
-                                  ? "Ordered"
-                                  : purchase.status === 1
-                                    ? "Accepted"
-                                    : purchase.status === 2
-                                      ? "Rejected"
-                                      : purchase.status === 3
-                                        ? "Completed"
-                                        : "Unknown"}
+                                {purchase.statusText}
                               </span>
                             </td>
                           )}
 
                           {columnsVisibility.returnNo && (
-                            <td>{purchase.franchisePurchaseReturnId}</td>
+                            <td>{purchase.franchisePurchaseReturnId || purchase.returnNo}</td>
                           )}
                           {columnsVisibility.invoiceNo && (
                             <td>{purchase.invoiceNumber || "N/A"}</td>
@@ -590,23 +880,9 @@ const ReturnPurchaseList = () => {
                           {columnsVisibility.paymentStatus && (
                             <td>
                               <span
-                                className={`badge ${
-                                  purchase.paymentStatus === 0
-                                    ? "bg-warning"
-                                    : purchase.paymentStatus === 1
-                                      ? "bg-primary"
-                                      : purchase.paymentStatus === 2
-                                        ? "bg-danger"
-                                        : "bg-secondary"
-                                }`}
+                                className={`badge ${getPaymentStatusBadgeClass(purchase.paymentStatus)}`}
                               >
-                                {purchase.paymentStatus === 0
-                                  ? "Pending"
-                                  : purchase.paymentStatus === 1
-                                    ? "Refund"
-                                    : purchase.paymentStatus === 2
-                                      ? "Credit Note"
-                                      : ""}
+                                {purchase.paymentStatusText}
                               </span>
                             </td>
                           )}
@@ -646,60 +922,9 @@ const ReturnPurchaseList = () => {
                       ))}
                     </tbody>
                   </table>
+                  
+              
                 </div>
-
-                {/* Pagination */}
-                {purchases.length > entriesPerPage && (
-                  <div className="row mt-3">
-                    <div className="col-12 d-flex justify-content-center">
-                      <nav>
-                        <ul className="pagination">
-                          <li
-                            className={`page-item ${currentPage === 1 ? "disabled" : ""}`}
-                          >
-                            <button
-                              className="page-link"
-                              onClick={() =>
-                                setCurrentPage((prev) => Math.max(prev - 1, 1))
-                              }
-                            >
-                              Previous
-                            </button>
-                          </li>
-
-                          {Array.from({ length: totalPages }, (_, i) => (
-                            <li
-                              key={i}
-                              className={`page-item ${currentPage === i + 1 ? "active" : ""}`}
-                            >
-                              <button
-                                className="page-link"
-                                onClick={() => setCurrentPage(i + 1)}
-                              >
-                                {i + 1}
-                              </button>
-                            </li>
-                          ))}
-
-                          <li
-                            className={`page-item ${currentPage === totalPages ? "disabled" : ""}`}
-                          >
-                            <button
-                              className="page-link"
-                              onClick={() =>
-                                setCurrentPage((prev) =>
-                                  Math.min(prev + 1, totalPages)
-                                )
-                              }
-                            >
-                              Next
-                            </button>
-                          </li>
-                        </ul>
-                      </nav>
-                    </div>
-                  </div>
-                )}
               </div>
             </div>
           </div>

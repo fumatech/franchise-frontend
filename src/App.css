@@ -480,3 +480,15 @@ input[type="number"]::-webkit-outer-spin-button {
 .modal-lg {
   max-width: 900px;
 }
+/* Add this to your CSS file */
+.dataTables_wrapper .dataTables_filter {
+  display: block !important;
+  float: right !important;
+  margin-top: 10px !important;
+}
+
+.dataTables_wrapper .dataTables_filter input {
+  margin-left: 0.5em !important;
+  display: inline-block !important;
+  width: auto !important;
+}

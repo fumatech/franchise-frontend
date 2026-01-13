@@ -1,16 +1,17 @@
 import React, { useEffect, useState } from "react";
-
 import { saveAs } from "file-saver";
 import { jsPDF } from "jspdf";
 import "jspdf-autotable";
 import * as XLSX from "xlsx";
 import "bootstrap/dist/css/bootstrap.min.css";
-
 import axios from "axios";
 import { Link, useNavigate } from "react-router-dom";
+import Collapse from "react-bootstrap/Collapse";
 
 function Customer({ userRoles }) {
-  const [customers, setCustomers] = useState([]); // State to store customer data
+  const [customers, setCustomers] = useState([]);
+  const [filteredCustomers, setFilteredCustomers] = useState([]);
+  
   const [columnsVisibility, setColumnsVisibility] = useState({
     customerName: true,
     firstName: true,
@@ -26,11 +27,33 @@ function Customer({ userRoles }) {
     gender: true,
     occupation: true,
     taxNumber: true,
+    status: true,
   });
+  
   const [entriesPerPage, setEntriesPerPage] = useState(25);
   const [currentPage, setCurrentPage] = useState(1);
+  const [open, setOpen] = useState(false);
+  const navigate = useNavigate();
 
-  const navigate = useNavigate(); // Initialize navigate
+  // Filter states
+  const [filterValues, setFilterValues] = useState({
+    statuses: ["Active", "Inactive"],
+    genders: [],
+    occupations: [],
+    cities: [],
+    states: [],
+    countries: [],
+  });
+
+  const [activeFilters, setActiveFilters] = useState({
+    status: "",
+    gender: "",
+    occupation: "",
+    city: "",
+    state: "",
+    country: "",
+    search: "",
+  });
 
   // Fetch customers data from API
   useEffect(() => {
@@ -39,15 +62,32 @@ function Customer({ userRoles }) {
         const response = await axios.get(
           `${process.env.REACT_APP_BASE_URL}/customer/getall`
         );
-        setCustomers(response.data); // Update state with fetched data
+        const customersData = response.data;
+        setCustomers(customersData);
+        setFilteredCustomers(customersData);
+
+        // Extract filter values
+        const genders = [...new Set(customersData.map((item) => item.gender))].filter(Boolean);
+        const occupations = [...new Set(customersData.map((item) => item.occupation))].filter(Boolean);
+        const cities = [...new Set(customersData.map((item) => item.city))].filter(Boolean);
+        const states = [...new Set(customersData.map((item) => item.state))].filter(Boolean);
+        const countries = [...new Set(customersData.map((item) => item.country))].filter(Boolean);
+
+        setFilterValues({
+          statuses: ["Active", "Inactive"],
+          genders,
+          occupations,
+          cities,
+          states,
+          countries,
+        });
+
         // Add external script directly
         const script = document.createElement("script");
         script.src = "js/JqueryContent.js";
         script.async = true;
-
         document.body.appendChild(script);
 
-        // Cleanup function to remove the script element when the component is unmounted
         return () => {
           document.body.removeChild(script);
         };
@@ -59,13 +99,82 @@ function Customer({ userRoles }) {
     fetchCustomers();
   }, []);
 
+  // Apply filters whenever activeFilters or customers change
+  useEffect(() => {
+    let result = customers;
+
+    // Apply search filter
+    if (activeFilters.search) {
+      const searchTerm = activeFilters.search.toLowerCase();
+      result = result.filter((customer) =>
+        Object.values(customer).some(
+          (value) =>
+            value &&
+            value.toString().toLowerCase().includes(searchTerm)
+        )
+      );
+    }
+
+    // Apply status filter
+    if (activeFilters.status) {
+      const isActive = activeFilters.status === "Active";
+      result = result.filter((customer) => customer.isActive === isActive);
+    }
+
+    // Apply gender filter
+    if (activeFilters.gender) {
+      result = result.filter((customer) => customer.gender === activeFilters.gender);
+    }
+
+    // Apply occupation filter
+    if (activeFilters.occupation) {
+      result = result.filter((customer) => customer.occupation === activeFilters.occupation);
+    }
+
+    // Apply location filters
+    if (activeFilters.city) {
+      result = result.filter((customer) => customer.city === activeFilters.city);
+    }
+
+    if (activeFilters.state) {
+      result = result.filter((customer) => customer.state === activeFilters.state);
+    }
+
+    if (activeFilters.country) {
+      result = result.filter((customer) => customer.country === activeFilters.country);
+    }
+
+    setFilteredCustomers(result);
+    setCurrentPage(1);
+  }, [activeFilters, customers]);
+
+  const handleFilterChange = (e) => {
+    const { name, value } = e.target;
+    setActiveFilters((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
+  };
+
+  const resetFilters = () => {
+    setActiveFilters({
+      status: "",
+      gender: "",
+      occupation: "",
+      city: "",
+      state: "",
+      country: "",
+      search: "",
+    });
+  };
+
   const exportCSV = () => {
-    const csvData = customers.map((customer) => ({
+    const csvData = filteredCustomers.map((customer) => ({
       "First Name": customer.firstName,
       "Last Name": customer.lastName,
       Email: customer.email,
       "Mobile Number": customer.mobileNumber,
-      Address: customer.permanentAddress,
+      Address: customer.permanentAddress || customer.address,
       City: customer.city,
       State: customer.state,
       Country: customer.country,
@@ -73,6 +182,7 @@ function Customer({ userRoles }) {
       "Date of Birth": customer.dateOfBirth,
       Gender: customer.gender,
       Occupation: customer.occupation,
+      Status: customer.isActive ? "Active" : "Inactive",
       "Tax Number": customer.taxNumber,
     }));
 
@@ -90,7 +200,7 @@ function Customer({ userRoles }) {
         "Date of Birth",
         "Gender",
         "Occupation",
-        "Is Active",
+        "Status",
         "Tax Number",
       ],
       ...csvData.map((row) => Object.values(row)),
@@ -103,7 +213,7 @@ function Customer({ userRoles }) {
   };
 
   const exportExcel = () => {
-    const ws = XLSX.utils.json_to_sheet(customers);
+    const ws = XLSX.utils.json_to_sheet(filteredCustomers);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Customers");
     XLSX.writeFile(wb, "customers.xlsx");
@@ -142,17 +252,16 @@ function Customer({ userRoles }) {
           "Date of Birth",
           "Gender",
           "Occupation",
-          "Is Active",
+          "Status",
           "Tax Number",
         ],
       ],
-      body: customers.map((customer) => [
-        customer.customerName,
+      body: filteredCustomers.map((customer) => [
         customer.firstName,
         customer.lastName,
         customer.email,
         customer.mobileNumber,
-        customer.permanentAddress,
+        customer.permanentAddress || customer.address,
         customer.city,
         customer.state,
         customer.country,
@@ -160,6 +269,7 @@ function Customer({ userRoles }) {
         customer.dateOfBirth,
         customer.gender,
         customer.occupation,
+        customer.isActive ? "Active" : "Inactive",
         customer.taxNumber,
       ]),
     });
@@ -175,15 +285,15 @@ function Customer({ userRoles }) {
 
   const handleEntriesChange = (e) => {
     setEntriesPerPage(Number(e.target.value));
-    setCurrentPage(1); // Reset to the first page when entries per page changes
+    setCurrentPage(1);
   };
 
   const handleEdit = (id) => {
-    navigate(`/EditCustomer/${id}`); // Navigate to the edit page with the customer ID
+    navigate(`/EditCustomer/${id}`);
   };
 
   const handleView = (id) => {
-    navigate(`/ViewCustomer/${id}`); // Navigate to the view page with the customer ID
+    navigate(`/ViewCustomer/${id}`);
   };
 
   const handleDelete = (id) => {
@@ -205,12 +315,13 @@ function Customer({ userRoles }) {
 
   const startIndex = (currentPage - 1) * entriesPerPage;
   const endIndex = startIndex + entriesPerPage;
-  const displayedCustomers = customers.slice(startIndex, endIndex);
+  const displayedCustomers = filteredCustomers.slice(startIndex, endIndex);
 
   const handleDropdownItemClick = (col, e) => {
-    e.stopPropagation(); // Prevent the event from bubbling up and affecting the dropdown toggle
-    toggleColumn(col); // Toggle column visibility
+    e.stopPropagation();
+    toggleColumn(col);
   };
+
   return (
     <div className="wrapper" style={{ maxHeight: "", overflowY: "auto" }}>
       <div className="content-wrapper">
@@ -218,7 +329,7 @@ function Customer({ userRoles }) {
           <div className="container-fluid">
             <div className="row mb-2">
               <div className="col-sm-6">
-                <h1 className="all-heading m-0 ">Customer</h1>
+                <h1 className="all-heading m-0">Customer</h1>
                 <span className="display-inline sub-heading">
                   Manage customer
                 </span>
@@ -227,7 +338,181 @@ function Customer({ userRoles }) {
           </div>
         </section>
         <section className="content">
-          <div className="container-fluid">
+          <div className="container-fluid py-2">
+            {/* Filter Component */}
+            <div className="card card-default rounded-4 border-0 cardHover">
+              <div
+                className="my- p-3 d-flex align-items-center"
+                style={{
+                  cursor: "pointer",
+                  fontWeight: "bold",
+                }}
+                onClick={() => setOpen(!open)}
+              >
+                <i className={`fa fa-filter me-3`}></i>
+                <span>Filter</span>
+              </div>
+
+              <Collapse in={open}>
+                <div className="border-top">
+                  <div className="card-body">
+                    {/* Search Input */}
+                    <div className="row mb-3">
+                      <div className="col-md-12">
+                        <div className="form-group">
+                          <label className="me-2">Search:</label>
+                          <input
+                            type="text"
+                            className="form-control"
+                            name="search"
+                            placeholder="Search in all fields..."
+                            value={activeFilters.search}
+                            onChange={handleFilterChange}
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="row py-2 g-2">
+                      {/* Status Dropdown */}
+                      <div className="col-md-3">
+                        <div className="form-group">
+                          <label className="me-2">Status:</label>
+                          <select
+                            className="form-select"
+                            name="status"
+                            value={activeFilters.status}
+                            onChange={handleFilterChange}
+                          >
+                            <option value="">All</option>
+                            {filterValues.statuses.map((status, index) => (
+                              <option key={`status-${index}`} value={status}>
+                                {status}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
+
+                      {/* Gender Dropdown */}
+                      <div className="col-md-3">
+                        <div className="form-group">
+                          <label className="me-2">Gender:</label>
+                          <select
+                            className="form-select"
+                            name="gender"
+                            value={activeFilters.gender}
+                            onChange={handleFilterChange}
+                          >
+                            <option value="">All</option>
+                            {filterValues.genders.map((gender, index) => (
+                              <option key={`gender-${index}`} value={gender}>
+                                {gender}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
+
+                      {/* Occupation Dropdown */}
+                      <div className="col-md-3">
+                        <div className="form-group">
+                          <label className="me-2">Occupation:</label>
+                          <select
+                            className="form-select"
+                            name="occupation"
+                            value={activeFilters.occupation}
+                            onChange={handleFilterChange}
+                          >
+                            <option value="">All</option>
+                            {filterValues.occupations.map((occupation, index) => (
+                              <option key={`occupation-${index}`} value={occupation}>
+                                {occupation}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
+
+                      {/* City Dropdown */}
+                      <div className="col-md-3">
+                        <div className="form-group">
+                          <label className="me-2">City:</label>
+                          <select
+                            className="form-select"
+                            name="city"
+                            value={activeFilters.city}
+                            onChange={handleFilterChange}
+                          >
+                            <option value="">All</option>
+                            {filterValues.cities.map((city, index) => (
+                              <option key={`city-${index}`} value={city}>
+                                {city}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
+
+                      {/* State Dropdown */}
+                      <div className="col-md-3">
+                        <div className="form-group">
+                          <label className="me-2">State:</label>
+                          <select
+                            className="form-select"
+                            name="state"
+                            value={activeFilters.state}
+                            onChange={handleFilterChange}
+                          >
+                            <option value="">All</option>
+                            {filterValues.states.map((state, index) => (
+                              <option key={`state-${index}`} value={state}>
+                                {state}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
+
+                      {/* Country Dropdown */}
+                      <div className="col-md-3">
+                        <div className="form-group">
+                          <label className="me-2">Country:</label>
+                          <select
+                            className="form-select"
+                            name="country"
+                            value={activeFilters.country}
+                            onChange={handleFilterChange}
+                          >
+                            <option value="">All</option>
+                            {filterValues.countries.map((country, index) => (
+                              <option key={`country-${index}`} value={country}>
+                                {country}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
+
+                      {/* Reset Button */}
+                      <div className="col-12 mt-3">
+                        <button
+                          className="btn btn-sm btn-outline-secondary"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            resetFilters();
+                          }}
+                          disabled={!Object.values(activeFilters).some(Boolean)}
+                        >
+                          <i className="fa fa-times me-1"></i> Reset All Filters
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </Collapse>
+            </div>
+
             <div className="card cardHover rounded-4 border-0">
               <div className="text-right">
                 <Link to="/AddCustomer" className="btn btn-add">
@@ -302,12 +587,12 @@ function Customer({ userRoles }) {
                             <input
                               type="checkbox"
                               checked={columnsVisibility[col]}
-                              onChange={() => toggleColumn(col)} // Toggle column visibility on checkbox change
+                              onChange={() => toggleColumn(col)}
                               className="mr-2"
                             />
                             <span
                               className="btn border-0 bg-transparent p-0 m-0"
-                              onClick={(e) => handleDropdownItemClick(col, e)} // Handle click on dropdown item
+                              onClick={(e) => handleDropdownItemClick(col, e)}
                             >
                               {col.replace(/([A-Z])/g, " $1").toUpperCase()}
                             </span>
@@ -326,7 +611,7 @@ function Customer({ userRoles }) {
                   >
                     <thead>
                       <tr>
-                        <th>Actions</th>{" "}
+                        <th>Actions</th>
                         {columnsVisibility.firstName && <th>First Name</th>}
                         {columnsVisibility.lastName && <th>Last Name</th>}
                         {columnsVisibility.email && <th>Email</th>}
@@ -343,6 +628,7 @@ function Customer({ userRoles }) {
                         )}
                         {columnsVisibility.gender && <th>Gender</th>}
                         {columnsVisibility.occupation && <th>Occupation</th>}
+                        {columnsVisibility.status && <th>Status</th>}
                         {columnsVisibility.taxNumber && <th>Tax Number</th>}
                       </tr>
                     </thead>
@@ -411,7 +697,7 @@ function Customer({ userRoles }) {
                             <td>{customer.mobileNumber}</td>
                           )}
                           {columnsVisibility.address && (
-                            <td>{customer.permanentAddress}</td>
+                            <td>{customer.permanentAddress || customer.address}</td>
                           )}
                           {columnsVisibility.city && <td>{customer.city}</td>}
                           {columnsVisibility.state && <td>{customer.state}</td>}
@@ -430,7 +716,13 @@ function Customer({ userRoles }) {
                           {columnsVisibility.occupation && (
                             <td>{customer.occupation}</td>
                           )}
-
+                          {columnsVisibility.status && (
+                            <td>
+                              <span className={`badge ${customer.isActive ? 'bg-success' : 'bg-danger'}`}>
+                                {customer.isActive ? 'Active' : 'Inactive'}
+                              </span>
+                            </td>
+                          )}
                           {columnsVisibility.taxNumber && (
                             <td>{customer.taxNumber}</td>
                           )}
@@ -438,6 +730,34 @@ function Customer({ userRoles }) {
                       ))}
                     </tbody>
                   </table>
+                  
+                  {/* Pagination Info */}
+                  <div className="d-flex justify-content-between align-items-center mt-3">
+                    <div>
+                      Showing {startIndex + 1} to{" "}
+                      {Math.min(endIndex, filteredCustomers.length)} of{" "}
+                      {filteredCustomers.length} entries
+                    </div>
+                    <div className="d-flex align-items-center">
+                      <button
+                        className="btn btn-sm btn-outline-secondary mx-1"
+                        onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                        disabled={currentPage === 1}
+                      >
+                        Previous
+                      </button>
+                      <span className="mx-2">
+                        Page {currentPage} of {Math.ceil(filteredCustomers.length / entriesPerPage)}
+                      </span>
+                      <button
+                        className="btn btn-sm btn-outline-secondary mx-1"
+                        onClick={() => setCurrentPage(prev => Math.min(prev + 1, Math.ceil(filteredCustomers.length / entriesPerPage)))}
+                        disabled={currentPage === Math.ceil(filteredCustomers.length / entriesPerPage)}
+                      >
+                        Next
+                      </button>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>

@@ -10,11 +10,13 @@ import { saveAs } from "file-saver";
 import { jsPDF } from "jspdf";
 import "jspdf-autotable";
 import * as XLSX from "xlsx";
-import $ from "jquery";
+import Collapse from "react-bootstrap/Collapse";
 
 const ListStockAdjustment = () => {
   const navigate = useNavigate();
   const [ListStockAdjustment, setListStockAdjustment] = useState([]);
+  const [filteredStockAdjustment, setFilteredStockAdjustment] = useState([]);
+  
   const [columnsVisibility, setColumnsVisibility] = useState({
     action: true,
     date: true,
@@ -26,11 +28,13 @@ const ListStockAdjustment = () => {
     reason: true,
     totalUnits: true,
   });
+  
   const [modalType, setModalType] = useState(null);
   const [currentlistStockAdjustment, setCurrentlistStockAdjustment] =
     useState(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [entriesPerPage, setEntriesPerPage] = useState(25);
+  const [open, setOpen] = useState(false);
   const [formData, setFormData] = useState({
     date: "",
     referenceNo: "",
@@ -40,6 +44,21 @@ const ListStockAdjustment = () => {
     totalAmountRecovered: "",
     reason: "",
     totalUnits: "",
+  });
+
+  // Filter states
+  const [filterValues, setFilterValues] = useState({
+    adjustmentTypes: [],
+    locations: [],
+    reasons: [],
+  });
+
+  const [activeFilters, setActiveFilters] = useState({
+    adjustmentType: "",
+    location: "",
+    reason: "",
+    startDate: "",
+    endDate: "",
   });
 
   useEffect(() => {
@@ -56,23 +75,35 @@ const ListStockAdjustment = () => {
           // Sort the data in descending order based on `id`
           const sortedData = data.sort((a, b) => b.id - a.id);
           setListStockAdjustment(sortedData);
+          setFilteredStockAdjustment(sortedData);
+
+          // Extract filter values
+          const adjustmentTypes = [...new Set(sortedData.map((item) => item.adjustmentType))].filter(Boolean);
+          const locations = [...new Set(sortedData.map((item) => item.businessLocation))].filter(Boolean);
+          const reasons = [...new Set(sortedData.map((item) => item.reason))].filter(Boolean);
+
+          setFilterValues({
+            adjustmentTypes,
+            locations,
+            reasons,
+          });
         } else {
           console.error("Fetched data is not an array");
           setListStockAdjustment([]);
+          setFilteredStockAdjustment([]);
         }
       } catch (error) {
         console.error("Error fetching ListStockAdjustment:", error);
         setListStockAdjustment([]);
+        setFilteredStockAdjustment([]);
       }
 
-      // Add external script directly without setTimeout
+      // Add external script
       const script = document.createElement("script");
       script.src = "js/JqueryContent.js";
       script.async = true;
-
       document.body.appendChild(script);
 
-      // Cleanup function to remove the script element when the component is unmounted
       return () => {
         document.body.removeChild(script);
       };
@@ -81,30 +112,94 @@ const ListStockAdjustment = () => {
     fetchListStockAdjustment();
   }, []);
 
+  // Apply filters whenever activeFilters or data changes
+  useEffect(() => {
+    let result = ListStockAdjustment;
+
+    // Apply adjustment type filter
+    if (activeFilters.adjustmentType) {
+      result = result.filter((item) => item.adjustmentType === activeFilters.adjustmentType);
+    }
+
+    // Apply location filter
+    if (activeFilters.location) {
+      result = result.filter((item) => item.businessLocation === activeFilters.location);
+    }
+
+    // Apply reason filter
+    if (activeFilters.reason) {
+      result = result.filter((item) => item.reason === activeFilters.reason);
+    }
+
+    // Apply start date filter
+    if (activeFilters.startDate) {
+      result = result.filter((item) => {
+        const adjustmentDate = new Date(item.date);
+        const startDate = new Date(activeFilters.startDate);
+        return adjustmentDate >= startDate;
+      });
+    }
+
+    // Apply end date filter
+    if (activeFilters.endDate) {
+      result = result.filter((item) => {
+        const adjustmentDate = new Date(item.date);
+        const endDate = new Date(activeFilters.endDate);
+        endDate.setHours(23, 59, 59, 999);
+        return adjustmentDate <= endDate;
+      });
+    }
+
+    setFilteredStockAdjustment(result);
+    setCurrentPage(1);
+  }, [activeFilters, ListStockAdjustment]);
+
+  const handleFilterChange = (e) => {
+    const { name, value } = e.target;
+    setActiveFilters((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
+  };
+
+  const resetFilters = () => {
+    setActiveFilters({
+      adjustmentType: "",
+      location: "",
+      reason: "",
+      startDate: "",
+      endDate: "",
+    });
+  };
+
+  const formatDate = (dateString) => {
+    if (!dateString) return "N/A";
+    const options = { year: "numeric", month: "short", day: "numeric" };
+    return new Date(dateString).toLocaleDateString(undefined, options);
+  };
+
   const exportCSV = () => {
-    const csvData = ListStockAdjustment.map((listStockAdjustment) => ({
-      Action: listStockAdjustment.action,
-      Date: listStockAdjustment.date,
-      ReferenceNo: listStockAdjustment.referenceNo,
-      Location: listStockAdjustment.location,
-      AdjustmentType: listStockAdjustment.adjustmentType,
-      TotalAmount: listStockAdjustment.totalAmount,
-      TotalAmountRecovered: listStockAdjustment.totalAmountRecovered,
+    const csvData = filteredStockAdjustment.map((listStockAdjustment) => ({
+      Date: formatDate(listStockAdjustment.date),
+      "Reference No": listStockAdjustment.referenceNumber,
+      Location: listStockAdjustment.businessLocation,
+      "Adjustment Type": listStockAdjustment.adjustmentType,
+      "Total Amount": listStockAdjustment.totalAmount,
+      "Amount Recovered": listStockAdjustment.amountRecovered,
       Reason: listStockAdjustment.reason,
-      totalUnits: listStockAdjustment.totalUnits,
+      "Total Units": listStockAdjustment.totalUnits,
     }));
 
     const csv = [
       [
-        "Action",
         "Date",
         "Reference No",
         "Location",
         "Adjustment Type",
         "Total Amount",
-        "Total Amount Recovered",
+        "Amount Recovered",
         "Reason",
-        "Added By",
+        "Total Units",
       ],
       ...csvData.map((row) => Object.values(row)),
     ]
@@ -112,61 +207,55 @@ const ListStockAdjustment = () => {
       .join("\n");
 
     const blob = new Blob([csv], { type: "text/csv" });
-    saveAs(blob, "ListStockAdjustment.csv");
+    saveAs(blob, "StockAdjustments.csv");
   };
 
   const exportExcel = () => {
     const ws = XLSX.utils.json_to_sheet(
-      ListStockAdjustment.map((listStockAdjustment) => ({
-        Action: listStockAdjustment.action,
-        Date: listStockAdjustment.date,
-        ReferenceNo: listStockAdjustment.referenceNo,
-        Location: listStockAdjustment.location,
-        AdjustmentType: listStockAdjustment.adjustmentType,
-        TotalAmount: listStockAdjustment.totalAmount,
-        TotalAmountRecovered: listStockAdjustment.totalAmountRecovered,
+      filteredStockAdjustment.map((listStockAdjustment) => ({
+        Date: formatDate(listStockAdjustment.date),
+        "Reference No": listStockAdjustment.referenceNumber,
+        Location: listStockAdjustment.businessLocation,
+        "Adjustment Type": listStockAdjustment.adjustmentType,
+        "Total Amount": listStockAdjustment.totalAmount,
+        "Amount Recovered": listStockAdjustment.amountRecovered,
         Reason: listStockAdjustment.reason,
-        totalUnits: listStockAdjustment.totalUnits,
+        "Total Units": listStockAdjustment.totalUnits,
       }))
     );
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "ListStockAdjustment");
-    XLSX.writeFile(wb, "ListStockAdjustment.xlsx");
+    XLSX.utils.book_append_sheet(wb, ws, "StockAdjustments");
+    XLSX.writeFile(wb, "StockAdjustments.xlsx");
   };
 
   const exportPDF = () => {
     const doc = new jsPDF();
 
-    // Define the column headers
     const headers = [
-      "Action",
       "Date",
       "Reference No",
       "Location",
       "Adjustment Type",
       "Total Amount",
-      "Total Amount Recovered",
+      "Amount Recovered",
       "Reason",
-      "Added By",
+      "Total Units",
     ];
 
-    // Map through the stock adjustment data and prepare the body
-    const body = ListStockAdjustment.slice(startIndex, endIndex).map(
+    const body = filteredStockAdjustment.slice(startIndex, endIndex).map(
       (adjustment) => [
-        "", // Placeholder for action buttons
-        adjustment.date,
-        adjustment.referenceNo,
-        adjustment.location,
+        formatDate(adjustment.date),
+        adjustment.referenceNumber,
+        adjustment.businessLocation,
         adjustment.adjustmentType,
         adjustment.totalAmount,
-        adjustment.totalAmountRecovered,
+        adjustment.amountRecovered,
         adjustment.reason,
         adjustment.totalUnits,
       ]
     );
 
-    // Add some space before the table
-    doc.text("Stock Adjustment List", 14, 20); // Title with a slight offset
+    doc.text("Stock Adjustment List", 14, 20);
     doc.setFontSize(12);
     doc.text(
       "Below is the list of stock adjustments with their details:",
@@ -174,7 +263,6 @@ const ListStockAdjustment = () => {
       30
     );
 
-    // Generate the PDF table with custom styles
     doc.autoTable({
       head: [headers],
       body: body,
@@ -187,17 +275,16 @@ const ListStockAdjustment = () => {
         overflow: "linebreak",
       },
       headStyles: {
-        fillColor: [22, 160, 133], // Bootstrap success color
-        textColor: [255, 255, 255], // White text
+        fillColor: [22, 160, 133],
+        textColor: [255, 255, 255],
         fontStyle: "bold",
       },
       alternateRowStyles: {
-        fillColor: [240, 240, 240], // Light gray for alternate rows
+        fillColor: [240, 240, 240],
       },
-      margin: { top: 50 }, // Increase top margin for more space above the table
+      margin: { top: 50 },
     });
 
-    // Save the PDF
     doc.save("StockAdjustmentList.pdf");
   };
 
@@ -221,6 +308,8 @@ const ListStockAdjustment = () => {
             th, td { border: 1px solid #ddd; padding: 8px; }
             th { background-color: #f2f2f2; }
             th, td { text-align: left; }
+            .type-normal { color: #4caf50; }
+            .type-abnormal { color: #f44336; }
           </style>
         </head>
         <body>
@@ -239,27 +328,34 @@ const ListStockAdjustment = () => {
                 ${columnsVisibility.totalAmount ? "<th>Total Amount</th>" : ""}
                 ${
                   columnsVisibility.totalAmountRecovered
-                    ? "<th>Total Amount Recovered</th>"
+                    ? "<th>Amount Recovered</th>"
                     : ""
                 }
                 ${columnsVisibility.reason ? "<th>Reason</th>" : ""}
-                ${columnsVisibility.totalUnits ? "<th>Added By</th>" : ""}
+                ${columnsVisibility.totalUnits ? "<th>Total Units</th>" : ""}
               </tr>
             </thead>
             <tbody>
-              ${ListStockAdjustment.slice(startIndex, endIndex)
-                .map(
-                  (listStockAdjustment) => `
+              ${filteredStockAdjustment.slice(startIndex, endIndex)
+                .map((listStockAdjustment) => {
+                  const getAdjustmentTypeClass = (type) => {
+                    if (!type) return '';
+                    const typeLower = type.toLowerCase();
+                    if (typeLower.includes('normal')) return 'type-normal';
+                    if (typeLower.includes('abnormal')) return 'type-abnormal';
+                    return '';
+                  };
+                  
+                  return `
                     <tr>
-                    
                       ${
                         columnsVisibility.date
-                          ? `<td>${listStockAdjustment.date}</td>`
+                          ? `<td>${formatDate(listStockAdjustment.date)}</td>`
                           : ""
                       }
                       ${
                         columnsVisibility.referenceNo
-                          ? `<td>${listStockAdjustment.referenceNo}</td>`
+                          ? `<td>${listStockAdjustment.referenceNumber}</td>`
                           : ""
                       }
                       ${
@@ -269,7 +365,7 @@ const ListStockAdjustment = () => {
                       }
                       ${
                         columnsVisibility.adjustmentType
-                          ? `<td>${listStockAdjustment.adjustmentType}</td>`
+                          ? `<td class="${getAdjustmentTypeClass(listStockAdjustment.adjustmentType)}">${listStockAdjustment.adjustmentType}</td>`
                           : ""
                       }
                       ${
@@ -279,7 +375,7 @@ const ListStockAdjustment = () => {
                       }
                       ${
                         columnsVisibility.totalAmountRecovered
-                          ? `<td>${listStockAdjustment.totalAmountRecovered}</td>`
+                          ? `<td>${listStockAdjustment.amountRecovered}</td>`
                           : ""
                       }
                       ${
@@ -292,8 +388,8 @@ const ListStockAdjustment = () => {
                           ? `<td>${listStockAdjustment.totalUnits}</td>`
                           : ""
                       }
-                    </tr>`
-                )
+                    </tr>`;
+                })
                 .join("")}
             </tbody>
           </table>
@@ -304,7 +400,6 @@ const ListStockAdjustment = () => {
     printWindow.document.write(tableContent);
     printWindow.document.close();
     printWindow.print();
-    printWindow.close();
   };
 
   const handleFormChange = (e) => {
@@ -365,6 +460,9 @@ const ListStockAdjustment = () => {
               (listStockAdjustment) => listStockAdjustment.id !== id
             )
           );
+          setFilteredStockAdjustment((prev) =>
+            prev.filter((item) => item.id !== id)
+          );
           alert(" deleted successfully!");
         } else {
           alert("Failed to delete .");
@@ -374,6 +472,19 @@ const ListStockAdjustment = () => {
         alert("Error deleting ");
       }
     }
+  };
+
+  const totalPages = Math.ceil(filteredStockAdjustment.length / entriesPerPage);
+
+  const getAdjustmentTypeBadgeClass = (type) => {
+    if (!type) return 'badge-secondary';
+    
+    const typeLower = type.toLowerCase();
+    if (typeLower.includes('normal')) return 'badge-success';
+    if (typeLower.includes('abnormal')) return 'badge-danger';
+    if (typeLower.includes('partial')) return 'badge-warning';
+    if (typeLower.includes('complete')) return 'badge-primary';
+    return 'badge-secondary';
   };
 
   return (
@@ -388,6 +499,136 @@ const ListStockAdjustment = () => {
             </div>
           </div>
         </section>
+
+        {/* Filter Component */}
+        <section className="content">
+          <div className="container-fluid py-2">
+            <div className="card card-default rounded-4 border-0 cardHover">
+              <div
+                className="my- p-3 d-flex align-items-center"
+                style={{
+                  cursor: "pointer",
+                  fontWeight: "bold",
+                }}
+                onClick={() => setOpen(!open)}
+              >
+                <i className={`fa fa-filter me-3`}></i>
+                <span>Filter</span>
+              </div>
+
+              <Collapse in={open}>
+                <div className="border-top">
+                  <div className="card-body">
+                    <div className="row py-2 g-2">
+                      {/* Adjustment Type Dropdown */}
+                      <div className="col-md-3">
+                        <div className="form-group">
+                          <label className="me-2">Adjustment Type:</label>
+                          <select
+                            className="form-select"
+                            name="adjustmentType"
+                            value={activeFilters.adjustmentType}
+                            onChange={handleFilterChange}
+                          >
+                            <option value="">All Types</option>
+                            {filterValues.adjustmentTypes.map((type, index) => (
+                              <option key={`type-${index}`} value={type}>
+                                {type}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
+
+                      {/* Location Dropdown */}
+                      <div className="col-md-3">
+                        <div className="form-group">
+                          <label className="me-2">Location:</label>
+                          <select
+                            className="form-select"
+                            name="location"
+                            value={activeFilters.location}
+                            onChange={handleFilterChange}
+                          >
+                            <option value="">All Locations</option>
+                            {filterValues.locations.map((location, index) => (
+                              <option key={`location-${index}`} value={location}>
+                                {location}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
+
+                      {/* Reason Dropdown */}
+                      <div className="col-md-3">
+                        <div className="form-group">
+                          <label className="me-2">Reason:</label>
+                          <select
+                            className="form-select"
+                            name="reason"
+                            value={activeFilters.reason}
+                            onChange={handleFilterChange}
+                          >
+                            <option value="">All Reasons</option>
+                            {filterValues.reasons.map((reason, index) => (
+                              <option key={`reason-${index}`} value={reason}>
+                                {reason}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
+
+                      {/* Start Date */}
+                      <div className="col-md-3">
+                        <div className="form-group">
+                          <label className="me-2">Start Date:</label>
+                          <input
+                            type="date"
+                            className="form-control"
+                            name="startDate"
+                            value={activeFilters.startDate}
+                            onChange={handleFilterChange}
+                          />
+                        </div>
+                      </div>
+
+                      {/* End Date */}
+                      <div className="col-md-3">
+                        <div className="form-group">
+                          <label className="me-2">End Date:</label>
+                          <input
+                            type="date"
+                            className="form-control"
+                            name="endDate"
+                            value={activeFilters.endDate}
+                            onChange={handleFilterChange}
+                          />
+                        </div>
+                      </div>
+
+                      {/* Reset Button */}
+                      <div className="col-12 mt-3">
+                        <button
+                          className="btn btn-sm btn-outline-secondary"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            resetFilters();
+                          }}
+                          disabled={!Object.values(activeFilters).some(Boolean)}
+                        >
+                          <i className="fa fa-times me-1"></i> Reset All Filters
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </Collapse>
+            </div>
+          </div>
+        </section>
+
         <section className="content">
           <div className="container-fluid">
             <div className="card cardHover rounded-4 border-0">
@@ -461,24 +702,35 @@ const ListStockAdjustment = () => {
                         className="dropdown-menu pointer-event"
                         aria-labelledby="dropdownMenuButton"
                       >
-                        {Object.keys(columnsVisibility).map((col) => (
+                        {Object.entries({
+                          action: "Action",
+                          date: "Date",
+                          referenceNo: "Reference No",
+                          location: "Location",
+                          adjustmentType: "Adjustment Type",
+                          totalAmount: "Total Amount",
+                          totalAmountRecovered: "Amount Recovered",
+                          reason: "Reason",
+                          totalUnits: "Total Units",
+                        }).map(([key, label]) => (
                           <div
-                            key={col}
+                            key={key}
                             className="dropdown-item d-flex align-items-center"
                           >
                             <input
                               type="checkbox"
-                              checked={columnsVisibility[col]}
-                              onChange={() => toggleColumn(col)}
+                              checked={columnsVisibility[key]}
+                              onChange={() => toggleColumn(key)}
                               className="mr-2"
                             />
-                            {col.replace(/([A-Z])/g, " $1").toUpperCase()}
+                            {label}
                           </div>
                         ))}
                       </div>
                     </div>
                   </div>
                 </div>
+                
                 <div id="table-container" style={{ overflowX: "auto" }}>
                   <table
                     id="example1"
@@ -495,14 +747,14 @@ const ListStockAdjustment = () => {
                         )}
                         {columnsVisibility.totalAmount && <th>Total Amount</th>}
                         {columnsVisibility.totalAmountRecovered && (
-                          <th>Total Amount Recovered</th>
+                          <th>Amount Recovered</th>
                         )}
                         {columnsVisibility.reason && <th>Reason</th>}
                         {columnsVisibility.totalUnits && <th>Total Units</th>}
                       </tr>
                     </thead>
                     <tbody>
-                      {ListStockAdjustment.slice(startIndex, endIndex).map(
+                      {filteredStockAdjustment.slice(startIndex, endIndex).map(
                         (listStockAdjustment) => (
                           <tr key={listStockAdjustment.id}>
                             {columnsVisibility.action && (
@@ -526,7 +778,7 @@ const ListStockAdjustment = () => {
                               </td>
                             )}
                             {columnsVisibility.date && (
-                              <td>{listStockAdjustment.date}</td>
+                              <td>{formatDate(listStockAdjustment.date)}</td>
                             )}
                             {columnsVisibility.referenceNo && (
                               <td>{listStockAdjustment.referenceNumber}</td>
@@ -535,7 +787,11 @@ const ListStockAdjustment = () => {
                               <td>{listStockAdjustment.businessLocation}</td>
                             )}
                             {columnsVisibility.adjustmentType && (
-                              <td>{listStockAdjustment.adjustmentType}</td>
+                              <td>
+                                <span className={`badge ${getAdjustmentTypeBadgeClass(listStockAdjustment.adjustmentType)}`}>
+                                  {listStockAdjustment.adjustmentType}
+                                </span>
+                              </td>
                             )}
                             {columnsVisibility.totalAmount && (
                               <td>{listStockAdjustment.totalAmount}</td>
@@ -554,6 +810,8 @@ const ListStockAdjustment = () => {
                       )}
                     </tbody>
                   </table>
+                  
+             
                 </div>
               </div>
             </div>
