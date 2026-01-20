@@ -35,7 +35,7 @@ function AddPoPurchase() {
   const [shippingDetails, setShippingDetails] = useState("");
   const [shippingCharges, setShippingCharges] = useState("");
   const [additionalExpenses, setAdditionalExpenses] = useState(
-    Array(4).fill({ name: "", amount: "0" })
+    Array(4).fill({ name: "", amount: "0" }),
   );
   const [chequeNumber, setChequeNumber] = useState("");
   const [bankAccountNumber, setBankAccountNumber] = useState("");
@@ -103,7 +103,7 @@ function AddPoPurchase() {
       .get(`${process.env.REACT_APP_BASE_URL}/payment-account/getall`)
       .then((response) => {
         const activeAccounts = response.data.filter(
-          (account) => account.status === 1
+          (account) => account.status === 1,
         );
         setPaymentAccounts(activeAccounts);
       })
@@ -144,7 +144,7 @@ function AddPoPurchase() {
     if (selectedOrderId) {
       axios
         .get(
-          `https://fusionmastertech.com:8443/franchisepurchaseorder/getPoDataById/${selectedOrderId.value}`
+          `https://fusionmastertech.com:8443/franchisepurchaseorder/getPoDataById/${selectedOrderId.value}`,
         )
         .then((response) => {
           const data = response.data;
@@ -167,7 +167,7 @@ function AddPoPurchase() {
               .then((response) => {
                 const matchedVariation = response.data.productVariations.find(
                   (variation) =>
-                    variation.id.toString() === item.productVariationId
+                    variation.id.toString() === item.productVariationId,
                 );
 
                 const defaultPurchasePriceExcTax =
@@ -216,12 +216,12 @@ function AddPoPurchase() {
                     product.quantity *
                       product.defaultPurchasePriceExcTax *
                       (1 - product.discountPercent / 100),
-                  0
+                  0,
                 )
                 .toFixed(2);
               const totalUnits = productsWithPrices.reduce(
                 (total, product) => total + product.quantity,
-                0
+                0,
               );
               setTotalUnits(totalUnits);
             })
@@ -247,13 +247,13 @@ function AddPoPurchase() {
         console.log(franchiseId);
 
         const response = await axios.get(
-          `https://fusionmastertech.com:8443/franchisepurchaseorder/getShipOrders`
+          `https://fusionmastertech.com:8443/franchisepurchaseorder/getShipOrders`,
         );
 
         if (response.data && Array.isArray(response.data)) {
           // Filter by franchiseId and status
           const filteredOrders = response.data.filter(
-            (order) => order.franchiseId === franchiseId && order.status === 3
+            (order) => order.franchiseId === franchiseId && order.status === 3,
           );
 
           const options = filteredOrders.map((order) => ({
@@ -295,7 +295,7 @@ function AddPoPurchase() {
     const fetchVendors = async () => {
       try {
         const response = await fetch(
-          `${process.env.REACT_APP_BASE_URL}/vendor/getall`
+          `${process.env.REACT_APP_BASE_URL}/vendor/getall`,
         );
         const data = await response.json();
         setVendorList(data);
@@ -316,7 +316,7 @@ function AddPoPurchase() {
   useEffect(() => {
     const newTotalUnits = selectedProducts.reduce(
       (total, product) => total + (product.quantity || 0),
-      0
+      0,
     );
     setTotalUnits(newTotalUnits);
   }, [selectedProducts]);
@@ -369,7 +369,7 @@ function AddPoPurchase() {
     const shipping = parseFloat(shippingCharges) || 0;
     const additionalExpensesTotal = additionalExpenses.reduce(
       (sum, expense) => sum + (parseFloat(expense.amount) || 0),
-      0
+      0,
     );
 
     const finalAmount =
@@ -402,7 +402,7 @@ function AddPoPurchase() {
   const searchProducts = async (query) => {
     try {
       const response = await fetch(
-        `https://fusionmastertech.com:8443/product/search/active?query=${query}`
+        `https://fusionmastertech.com:8443/product/search/active?query=${query}`,
       );
       const data = await response.json();
       setSearchResults(data);
@@ -425,7 +425,7 @@ function AddPoPurchase() {
       if (e.key === "ArrowDown") {
         e.preventDefault();
         setFocusedIndex((prev) =>
-          prev < searchResults.length - 1 ? prev + 1 : prev
+          prev < searchResults.length - 1 ? prev + 1 : prev,
         );
         scrollToFocusedItem();
       } else if (e.key === "ArrowUp") {
@@ -451,7 +451,7 @@ function AddPoPurchase() {
   const handleProductSelect = (product) => {
     if (product.productVariations.length > 0) {
       const allVariationsSelected = product.productVariations.every(
-        (variation) => selectedVariations[variation.id]
+        (variation) => selectedVariations[variation.id],
       );
 
       const newSelectedVariations = { ...selectedVariations };
@@ -486,11 +486,11 @@ function AddPoPurchase() {
   const updateSelectedProducts = (product, variations) => {
     if (product.productVariations.length > 0) {
       const selectedVars = product.productVariations.filter(
-        (variation) => variations[variation.id]
+        (variation) => variations[variation.id],
       );
 
       setSelectedProducts((prev) =>
-        prev.filter((p) => p.id !== product.id || !p.variationId)
+        prev.filter((p) => p.id !== product.id || !p.variationId),
       );
 
       if (selectedVars.length > 0) {
@@ -540,7 +540,7 @@ function AddPoPurchase() {
         }
       } else {
         setSelectedProducts((prev) =>
-          prev.filter((p) => !(p.id === product.id && !p.variationId))
+          prev.filter((p) => !(p.id === product.id && !p.variationId)),
         );
       }
     }
@@ -550,8 +550,8 @@ function AddPoPurchase() {
     setSelectedProducts((prev) =>
       prev.filter(
         (product) =>
-          !(product.id === productId && product.variationId === variationId)
-      )
+          !(product.id === productId && product.variationId === variationId),
+      ),
     );
     if (variationId) {
       setSelectedVariations((prev) => ({ ...prev, [variationId]: false }));
@@ -574,8 +574,8 @@ function AddPoPurchase() {
               taxRateId,
               selectedTax: selectedOption || null,
             }
-          : product
-      )
+          : product,
+      ),
     );
   };
 
@@ -602,7 +602,7 @@ function AddPoPurchase() {
           return { ...product, quantity: newQty };
         }
         return product;
-      })
+      }),
     );
   };
   const handleProfitMarginChange = (productId, variationId, value) => {
@@ -610,8 +610,8 @@ function AddPoPurchase() {
       prev.map((product) =>
         product.id === productId && product.variationId === variationId
           ? { ...product, profitMargin: value }
-          : product
-      )
+          : product,
+      ),
     );
   };
 
@@ -620,8 +620,8 @@ function AddPoPurchase() {
       prev.map((product) =>
         product.id === productId && product.variationId === variationId
           ? { ...product, discountPercent: value }
-          : product
-      )
+          : product,
+      ),
     );
   };
 
@@ -722,7 +722,7 @@ function AddPoPurchase() {
               productName: product.productName,
               variationName: String(product.variationName).trim(), // <-- Ensure it's string
             },
-          }
+          },
         );
 
         // if (checkResponse.data === "Product already exists.") {
@@ -744,10 +744,10 @@ function AddPoPurchase() {
         shippingDetails: shippingDetails || "",
         shippingCharges: parseFloat(shippingCharges) || 0,
         additionalExpensesName: additionalExpenses.map(
-          (expense) => expense.name
+          (expense) => expense.name,
         ),
         amount: additionalExpenses.map(
-          (expense) => parseFloat(expense.amount) || 0
+          (expense) => parseFloat(expense.amount) || 0,
         ),
       },
     ];
@@ -874,7 +874,7 @@ function AddPoPurchase() {
     try {
       const response = await api.post(
         `${process.env.REACT_APP_BASE_URL}/purchase-po-order/save`,
-        payload
+        payload,
       );
 
       if (response.status === 200 || response.status === 201) {
@@ -900,7 +900,7 @@ function AddPoPurchase() {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({ status: 4 }),
-        }
+        },
       );
 
       if (response.ok) {
@@ -1038,7 +1038,7 @@ function AddPoPurchase() {
                       {/* Order Date */}
                       <div className="col-md-4">
                         <div className="form-group d-flex flex-row flex-md-column">
-                          <label htmlFor="orderDate">Order Date</label>
+                          <label htmlFor="orderDate">Ordered Date</label>
                           <DatePicker
                             selected={orderDate}
                             onChange={(date) => setOrderDate(date)}
@@ -1153,7 +1153,7 @@ function AddPoPurchase() {
                               (
                                 product.productVariations.length > 0
                                   ? product.productVariations.some(
-                                      (v) => selectedVariations[v.id]
+                                      (v) => selectedVariations[v.id],
                                     )
                                   : selectedVariations[product.id]
                               )
@@ -1207,7 +1207,7 @@ function AddPoPurchase() {
                                             handleVariationSelect(
                                               product,
                                               variation,
-                                              e
+                                              e,
                                             );
                                           }}
                                         >
@@ -1215,7 +1215,7 @@ function AddPoPurchase() {
                                             {variation.variationValue}
                                           </span>
                                         </div>
-                                      )
+                                      ),
                                     )}
                                   </div>
                                 )}
@@ -1249,7 +1249,7 @@ function AddPoPurchase() {
                             {selectedProducts.map((product, index) => {
                               const unitCostBeforeDiscount =
                                 parseFloat(
-                                  product.defaultPurchasePriceExcTax
+                                  product.defaultPurchasePriceExcTax,
                                 ) || 0;
                               const discountPercent =
                                 parseFloat(product.discountPercent) || 0;
@@ -1303,7 +1303,7 @@ function AddPoPurchase() {
                                         handleQuantityChange(
                                           product.id,
                                           product.variationId,
-                                          e.target.value
+                                          e.target.value,
                                         )
                                       }
                                     />
@@ -1333,8 +1333,8 @@ function AddPoPurchase() {
                                                   defaultPurchasePriceExcTax:
                                                     value,
                                                 }
-                                              : p
-                                          )
+                                              : p,
+                                          ),
                                         );
                                       }}
                                     />
@@ -1356,13 +1356,13 @@ function AddPoPurchase() {
                                           100,
                                           Math.max(
                                             0,
-                                            parseFloat(e.target.value) || 0
-                                          )
+                                            parseFloat(e.target.value) || 0,
+                                          ),
                                         );
                                         handleDiscountChange(
                                           product.id,
                                           product.variationId,
-                                          value
+                                          value,
                                         );
                                       }}
                                     />
@@ -1379,7 +1379,7 @@ function AddPoPurchase() {
                                         handleTaxRateChange(
                                           product.id,
                                           product.variationId,
-                                          selected
+                                          selected,
                                         )
                                       }
                                       placeholder="Select Tax"
@@ -1510,7 +1510,7 @@ function AddPoPurchase() {
                                     options={taxOptions}
                                     value={
                                       taxOptions.find(
-                                        (opt) => opt.value === purchaseTax
+                                        (opt) => opt.value === purchaseTax,
                                       ) || taxOptions[0] // Default to "None"
                                     }
                                     onChange={handleTaxIdChange}
@@ -1641,7 +1641,7 @@ function AddPoPurchase() {
                                         handleExpenseChange(
                                           index,
                                           "name",
-                                          e.target.value
+                                          e.target.value,
                                         )
                                       }
                                     />
@@ -1655,7 +1655,7 @@ function AddPoPurchase() {
                                         handleExpenseChange(
                                           index,
                                           "amount",
-                                          e.target.value
+                                          e.target.value,
                                         )
                                       }
                                     />

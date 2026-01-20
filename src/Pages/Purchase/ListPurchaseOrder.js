@@ -17,7 +17,7 @@ import Collapse from "react-bootstrap/Collapse";
 const ListPurchaseOrder = () => {
   const [purchases, setPurchases] = useState([]);
   const [filteredPurchases, setFilteredPurchases] = useState([]);
-  
+
   const [columnsVisibility, setColumnsVisibility] = useState({
     action: true,
     status: true,
@@ -32,7 +32,7 @@ const ListPurchaseOrder = () => {
     addedBy: true,
     purchaseOrderId: true,
   });
-  
+
   const navigate = useNavigate();
   const [currentPage, setCurrentPage] = useState(1);
   const [entriesPerPage, setEntriesPerPage] = useState(25);
@@ -40,7 +40,14 @@ const ListPurchaseOrder = () => {
 
   // Filter states
   const [filterValues, setFilterValues] = useState({
-    statuses: ["Ordered", "Accepted", "Rejected", "Shipped", "Delivered", "Received"],
+    statuses: [
+      "Ordered",
+      "Accepted",
+      "Rejected",
+      "Shipped",
+      "Delivered",
+      "Received",
+    ],
     vendors: [],
   });
 
@@ -67,13 +74,13 @@ const ListPurchaseOrder = () => {
       }
 
       const response = await axios.get(
-        `https://fusionmastertech.com:8443/franchisepurchaseorder/getall`
+        `https://fusionmastertech.com:8443/franchisepurchaseorder/getall`,
       );
 
       if (Array.isArray(response.data)) {
         // Filter orders by franchiseId
         const filteredData = response.data.filter(
-          (order) => order.franchiseId === franchiseId
+          (order) => order.franchiseId === franchiseId,
         );
 
         // Sort by ID in descending order to show newest first
@@ -83,10 +90,19 @@ const ListPurchaseOrder = () => {
         setFilteredPurchases(sortedData);
 
         // Extract filter values
-        const vendors = [...new Set(sortedData.map((item) => item.vendor))].filter(Boolean);
+        const vendors = [
+          ...new Set(sortedData.map((item) => item.vendor)),
+        ].filter(Boolean);
 
         setFilterValues({
-          statuses: ["Ordered", "Accepted", "Rejected", "Shipped", "Delivered", "Received"],
+          statuses: [
+            "Ordered",
+            "Accepted",
+            "Rejected",
+            "Shipped",
+            "Delivered",
+            "Received",
+          ],
           vendors,
         });
       } else {
@@ -123,21 +139,23 @@ const ListPurchaseOrder = () => {
     // Apply status filter
     if (activeFilters.status) {
       const statusMap = {
-        "Ordered": 0,
-        "Accepted": 1,
-        "Rejected": 2,
-        "Shipped": 3,
-        "Delivered": 4,
-        "Received": 5
+        Ordered: 0,
+        Accepted: 1,
+        Rejected: 2,
+        Shipped: 3,
+        Delivered: 4,
+        Received: 5,
       };
-      
+
       const statusValue = statusMap[activeFilters.status];
       result = result.filter((purchase) => purchase.status === statusValue);
     }
 
     // Apply vendor filter
     if (activeFilters.vendor) {
-      result = result.filter((purchase) => purchase.vendor === activeFilters.vendor);
+      result = result.filter(
+        (purchase) => purchase.vendor === activeFilters.vendor,
+      );
     }
 
     // Apply start date filter
@@ -195,7 +213,7 @@ const ListPurchaseOrder = () => {
     ) {
       try {
         const response = await axios.delete(
-          `https://fusionmastertech.com:8443/franchisepurchaseorder/delete/${id}`
+          `https://fusionmastertech.com:8443/franchisepurchaseorder/delete/${id}`,
         );
 
         if (response.status === 204) {
@@ -216,23 +234,24 @@ const ListPurchaseOrder = () => {
       "Order ID": purchase.franchisePurchaseOrderId,
       "Order Date": purchase.orderDate,
       "Reference No": purchase.referenceNumber,
-      "Location": purchase.location,
-      "Vendor": purchase.vendor,
+      Location: purchase.location,
+      Vendor: purchase.vendor,
       "Total Items": purchase.totalItems,
       "Shipped Items": purchase.totalShippedItems || 0,
-      "Status": purchase.status === 0
-        ? "Ordered"
-        : purchase.status === 1
-          ? "Accepted"
-          : purchase.status === 2
-            ? "Rejected"
-            : purchase.status === 3
-              ? "Shipped"
-              : purchase.status === 4
-                ? "Delivered"
-                : purchase.status === 5
-                  ? "Received"
-                  : "Unknown",
+      Status:
+        purchase.status === 0
+          ? "Ordered"
+          : purchase.status === 1
+            ? "Accepted"
+            : purchase.status === 2
+              ? "Rejected"
+              : purchase.status === 3
+                ? "Shipped"
+                : purchase.status === 4
+                  ? "Delivered"
+                  : purchase.status === 5
+                    ? "Received"
+                    : "Unknown",
       "Additional Notes": purchase.additionalNotes,
       "Added By": purchase.addedBy,
     }));
@@ -254,26 +273,27 @@ const ListPurchaseOrder = () => {
         "Order ID": purchase.franchisePurchaseOrderId,
         "Order Date": purchase.orderDate,
         "Reference No": purchase.referenceNumber,
-        "Location": purchase.location,
-        "Vendor": purchase.vendor,
+        Location: purchase.location,
+        Vendor: purchase.vendor,
         "Total Items": purchase.totalItems,
         "Shipped Items": purchase.totalShippedItems || 0,
-        "Status": purchase.status === 0
-          ? "Ordered"
-          : purchase.status === 1
-            ? "Accepted"
-            : purchase.status === 2
-              ? "Rejected"
-              : purchase.status === 3
-                ? "Shipped"
-                : purchase.status === 4
-                  ? "Delivered"
-                  : purchase.status === 5
-                    ? "Received"
-                    : "Unknown",
+        Status:
+          purchase.status === 0
+            ? "Ordered"
+            : purchase.status === 1
+              ? "Accepted"
+              : purchase.status === 2
+                ? "Rejected"
+                : purchase.status === 3
+                  ? "Shipped"
+                  : purchase.status === 4
+                    ? "Delivered"
+                    : purchase.status === 5
+                      ? "Received"
+                      : "Unknown",
         "Additional Notes": purchase.additionalNotes,
         "Added By": purchase.addedBy,
-      }))
+      })),
     );
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Purchase Orders");
@@ -382,28 +402,42 @@ const ListPurchaseOrder = () => {
                 .map((purchase) => {
                   const getStatusClass = (status) => {
                     switch (status) {
-                      case 0: return 'status-ordered';
-                      case 1: return 'status-accepted';
-                      case 2: return 'status-rejected';
-                      case 3: return 'status-shipped';
-                      case 4: return 'status-delivered';
-                      case 5: return 'status-received';
-                      default: return '';
+                      case 0:
+                        return "status-ordered";
+                      case 1:
+                        return "status-accepted";
+                      case 2:
+                        return "status-rejected";
+                      case 3:
+                        return "status-shipped";
+                      case 4:
+                        return "status-delivered";
+                      case 5:
+                        return "status-received";
+                      default:
+                        return "";
                     }
                   };
-                  
+
                   const getStatusText = (status) => {
                     switch (status) {
-                      case 0: return "Ordered";
-                      case 1: return "Accepted";
-                      case 2: return "Rejected";
-                      case 3: return "Shipped";
-                      case 4: return "Delivered";
-                      case 5: return "Received";
-                      default: return "Unknown";
+                      case 0:
+                        return "Ordered";
+                      case 1:
+                        return "Accepted";
+                      case 2:
+                        return "Rejected";
+                      case 3:
+                        return "Shipped";
+                      case 4:
+                        return "Delivered";
+                      case 5:
+                        return "Received";
+                      default:
+                        return "Unknown";
                     }
                   };
-                  
+
                   return `
                     <tr>
                       ${columnsVisibility.purchaseOrderId ? `<td>${purchase.franchisePurchaseOrderId}</td>` : ""}
@@ -449,25 +483,39 @@ const ListPurchaseOrder = () => {
 
   const getStatusBadgeClass = (status) => {
     switch (status) {
-      case 0: return 'badge-warning'; // Ordered
-      case 1: return 'badge-success'; // Accepted
-      case 2: return 'badge-danger'; // Rejected
-      case 3: return 'badge-info'; // Shipped
-      case 4: return 'badge-primary'; // Delivered
-      case 5: return 'badge-secondary'; // Received
-      default: return 'badge-secondary';
+      case 0:
+        return "badge-warning"; // Ordered
+      case 1:
+        return "badge-success"; // Accepted
+      case 2:
+        return "badge-danger"; // Rejected
+      case 3:
+        return "badge-info"; // Shipped
+      case 4:
+        return "badge-primary"; // Delivered
+      case 5:
+        return "badge-secondary"; // Received
+      default:
+        return "badge-secondary";
     }
   };
 
   const getStatusText = (status) => {
     switch (status) {
-      case 0: return "Ordered";
-      case 1: return "Accepted";
-      case 2: return "Rejected";
-      case 3: return "Shipped";
-      case 4: return "Delivered";
-      case 5: return "Received";
-      default: return "Unknown";
+      case 0:
+        return "Ordered";
+      case 1:
+        return "Accepted";
+      case 2:
+        return "Rejected";
+      case 3:
+        return "Shipped";
+      case 4:
+        return "Delivered";
+      case 5:
+        return "Received";
+      default:
+        return "Unknown";
     }
   };
 
@@ -486,8 +534,7 @@ const ListPurchaseOrder = () => {
             </div>
           </div>
         </section>
-
-        {/* Filter Component */}
+        {/* 
         <section className="content">
           <div className="container-fluid py-2">
             <div className="card card-default rounded-4 border-0 cardHover">
@@ -507,7 +554,6 @@ const ListPurchaseOrder = () => {
                 <div className="border-top">
                   <div className="card-body">
                     <div className="row py-2 g-2">
-                      {/* Status Dropdown */}
                       <div className="col-md-3">
                         <div className="form-group">
                           <label className="me-2">Status:</label>
@@ -527,7 +573,6 @@ const ListPurchaseOrder = () => {
                         </div>
                       </div>
 
-                      {/* Vendor Dropdown */}
                       <div className="col-md-3">
                         <div className="form-group">
                           <label className="me-2">Vendor:</label>
@@ -547,7 +592,6 @@ const ListPurchaseOrder = () => {
                         </div>
                       </div>
 
-                      {/* Start Date */}
                       <div className="col-md-3">
                         <div className="form-group">
                           <label className="me-2">Start Date:</label>
@@ -561,7 +605,6 @@ const ListPurchaseOrder = () => {
                         </div>
                       </div>
 
-                      {/* End Date */}
                       <div className="col-md-3">
                         <div className="form-group">
                           <label className="me-2">End Date:</label>
@@ -575,7 +618,6 @@ const ListPurchaseOrder = () => {
                         </div>
                       </div>
 
-                      {/* Reset Button */}
                       <div className="col-12 mt-3">
                         <button
                           className="btn btn-sm btn-outline-secondary"
@@ -594,7 +636,7 @@ const ListPurchaseOrder = () => {
               </Collapse>
             </div>
           </div>
-        </section>
+        </section> */}
 
         <section className="content">
           <div className="container-fluid">
@@ -695,7 +737,7 @@ const ListPurchaseOrder = () => {
                     </div>
                   </div>
                 </div>
-                
+
                 <div id="table-container" style={{ overflowX: "auto" }}>
                   <table
                     id="example1"
@@ -796,7 +838,9 @@ const ListPurchaseOrder = () => {
                           )}
                           {columnsVisibility.status && (
                             <td>
-                              <span className={`badge ${getStatusBadgeClass(purchase.status)}`}>
+                              <span
+                                className={`badge ${getStatusBadgeClass(purchase.status)}`}
+                              >
                                 {getStatusText(purchase.status)}
                               </span>
                             </td>
@@ -829,7 +873,7 @@ const ListPurchaseOrder = () => {
                       ))}
                     </tbody>
                   </table>
-                  
+
                   {/* Pagination Info */}
                   <div className="d-flex justify-content-between align-items-center mt-3">
                     <div>
@@ -840,7 +884,9 @@ const ListPurchaseOrder = () => {
                     <div className="d-flex align-items-center">
                       <button
                         className="btn btn-sm btn-outline-secondary mx-1"
-                        onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                        onClick={() =>
+                          setCurrentPage((prev) => Math.max(prev - 1, 1))
+                        }
                         disabled={currentPage === 1}
                       >
                         Previous
@@ -850,7 +896,11 @@ const ListPurchaseOrder = () => {
                       </span>
                       <button
                         className="btn btn-sm btn-outline-secondary mx-1"
-                        onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                        onClick={() =>
+                          setCurrentPage((prev) =>
+                            Math.min(prev + 1, totalPages),
+                          )
+                        }
                         disabled={currentPage === totalPages}
                       >
                         Next

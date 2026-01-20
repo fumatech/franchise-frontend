@@ -40,7 +40,7 @@ function ViewPurchaseOrder() {
       try {
         setIsLoading(true);
         const response = await api.get(
-          `https://fusionmastertech.com:8443/franchisepurchaseorder/get/${id}`
+          `https://fusionmastertech.com:8443/franchisepurchaseorder/get/${id}`,
         );
         const data = response.data;
 
@@ -48,7 +48,7 @@ function ViewPurchaseOrder() {
         setVendor(data.vendor);
         setReferenceNumber(data.referenceNumber);
         setOrderDate(new Date(data.orderDate));
-        setExpectedDate(data.expectedDate ? new Date(data.expectedDate) : null);
+        setExpectedDate(data.deliveryDate ? new Date(data.deliveryDate) : null);
         setLocation(data.location);
         setAdditionalNotes(data.additionalNotes);
         setAddedBy(data.addedBy);
@@ -133,7 +133,7 @@ function ViewPurchaseOrder() {
     const fetchVendors = async () => {
       try {
         const response = await fetch(
-          `https://fusionmastertech.com:8443/business-details/getall`
+          `https://fusionmastertech.com:8443/business-details/getall`,
         );
         const data = await response.json();
         setVendorList(data);
@@ -195,7 +195,7 @@ function ViewPurchaseOrder() {
   const searchProducts = async (query) => {
     try {
       const response = await fetch(
-        `https://fusionmastertech.com:8443/product/search/active?query=${query}`
+        `https://fusionmastertech.com:8443/product/search/active?query=${query}`,
       );
       const data = await response.json();
       setSearchResults(data);
@@ -208,7 +208,7 @@ function ViewPurchaseOrder() {
   const handleProductSelect = async (product) => {
     if (product.productVariations.length > 0) {
       const allVariationsSelected = product.productVariations.every(
-        (variation) => selectedVariations[variation.id]
+        (variation) => selectedVariations[variation.id],
       );
 
       const newSelectedVariations = { ...selectedVariations };
@@ -259,11 +259,11 @@ function ViewPurchaseOrder() {
   const updateSelectedProducts = (product, variations) => {
     if (product.productVariations.length > 0) {
       const selectedVars = product.productVariations.filter(
-        (variation) => variations[variation.id]
+        (variation) => variations[variation.id],
       );
 
       setSelectedProducts((prev) =>
-        prev.filter((p) => p.id !== product.id || !p.variationId)
+        prev.filter((p) => p.id !== product.id || !p.variationId),
       );
 
       if (selectedVars.length > 0) {
@@ -296,7 +296,7 @@ function ViewPurchaseOrder() {
         }
       } else {
         setSelectedProducts((prev) =>
-          prev.filter((p) => !(p.id === product.id && !p.variationId))
+          prev.filter((p) => !(p.id === product.id && !p.variationId)),
         );
       }
     }
@@ -307,8 +307,8 @@ function ViewPurchaseOrder() {
     setSelectedProducts((prev) =>
       prev.filter(
         (product) =>
-          !(product.id === productId && product.variationId === variationId)
-      )
+          !(product.id === productId && product.variationId === variationId),
+      ),
     );
     if (variationId) {
       setSelectedVariations((prev) => ({ ...prev, [variationId]: false }));
@@ -322,8 +322,8 @@ function ViewPurchaseOrder() {
       prev.map((product) =>
         product.id === productId && product.variationId === variationId
           ? { ...product, quantity: Math.max(1, parseInt(value) || 1) }
-          : product
-      )
+          : product,
+      ),
     );
   };
 
@@ -366,7 +366,7 @@ function ViewPurchaseOrder() {
     try {
       const response = await api.put(
         `https://fusionmastertech.com:8443/franchisepurchaseorder/update`,
-        payload
+        payload,
       );
       alert("Purchase Order updated successfully");
       navigate("/ListPurchaseOrder");
@@ -516,7 +516,7 @@ function ViewPurchaseOrder() {
                             (
                               product.productVariations.length > 0
                                 ? product.productVariations.some(
-                                    (v) => selectedVariations[v.id]
+                                    (v) => selectedVariations[v.id],
                                   )
                                 : selectedVariations[product.id]
                             )
@@ -557,7 +557,7 @@ function ViewPurchaseOrder() {
                                           handleVariationSelect(
                                             product,
                                             variation,
-                                            e
+                                            e,
                                           );
                                         }}
                                       >
@@ -565,7 +565,7 @@ function ViewPurchaseOrder() {
                                           {variation.variationValue}
                                         </span>
                                       </div>
-                                    )
+                                    ),
                                   )}
                                 </div>
                               )}
@@ -616,12 +616,12 @@ function ViewPurchaseOrder() {
                                   onChange={(e) => {
                                     const value = Math.max(
                                       0,
-                                      parseInt(e.target.value) || 0
+                                      parseInt(e.target.value) || 0,
                                     );
                                     handleQuantityChange(
                                       product.id,
                                       product.variationId,
-                                      value
+                                      value,
                                     );
                                   }}
                                   style={{
@@ -639,7 +639,7 @@ function ViewPurchaseOrder() {
                                   onClick={() =>
                                     handleRemoveProduct(
                                       product.id,
-                                      product.variationId
+                                      product.variationId,
                                     )
                                   }
                                 >
