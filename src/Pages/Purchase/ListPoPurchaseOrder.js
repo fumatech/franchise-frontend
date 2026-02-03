@@ -19,20 +19,20 @@ const ListPoPurchaseOrder = () => {
   const [purchases, setPurchases] = useState([]);
   const [columnsVisibility, setColumnsVisibility] = useState({
     action: true,
-    orderId: true, // Changed from 'date'
-    invoiceNumber: true, // Changed from 'referenceNumber'
-    purchaseDate: true, // New column
-    vendor: true, // Kept same
-    totalQuantity: true, // Changed from 'totalItems'
-    totalAmount: true, // New column
-    addedBy: true, // Kept same
+    orderId: true,
+    invoiceNumber: true,
+    purchaseDate: true,
+    vendor: true,
+    totalQuantity: true,
+    totalAmount: true,
+    addedBy: true,
   });
   const navigate = useNavigate();
 
   const [currentPage, setCurrentPage] = useState(1);
   const [entriesPerPage, setEntriesPerPage] = useState(25);
 
-  // Filter states (unchanged)
+  // Filter states
   const [filterCollapsed, setFilterCollapsed] = useState(true);
   const [filterValues, setFilterValues] = useState({
     locations: [],
@@ -41,17 +41,18 @@ const ListPoPurchaseOrder = () => {
   const [activeFilters, setActiveFilters] = useState({
     location: "",
     vendor: "",
-    dateRange: "",
+    startDate: "",
+    endDate: "",
   });
 
-  // Data fetching (unchanged)
+  // Data fetching
   useEffect(() => {
     if (purchases.length > 0) {
       const locations = [
         ...new Set(purchases.map((item) => item.location)),
       ].filter(Boolean);
       const vendors = [...new Set(purchases.map((item) => item.vendor))].filter(
-        Boolean
+        Boolean,
       );
 
       setFilterValues({
@@ -61,7 +62,7 @@ const ListPoPurchaseOrder = () => {
     }
   }, [purchases]);
 
-  // Filter handling (unchanged)
+  // Filter handling with date filtering
   const handleFilterChange = (e) => {
     const { name, value } = e.target;
     setActiveFilters((prev) => ({
@@ -75,19 +76,50 @@ const ListPoPurchaseOrder = () => {
     setActiveFilters({
       location: "",
       vendor: "",
-      dateRange: "",
+      startDate: "",
+      endDate: "",
     });
   };
 
   const filteredPurchases = purchases.filter((purchase) => {
-    return (
-      (activeFilters.location === "" ||
-        purchase.location === activeFilters.location) &&
-      (activeFilters.vendor === "" || purchase.vendor === activeFilters.vendor)
-    );
+    // Check location filter
+    const locationMatch =
+      activeFilters.location === "" ||
+      purchase.location === activeFilters.location;
+
+    // Check vendor filter
+    const vendorMatch =
+      activeFilters.vendor === "" || purchase.vendor === activeFilters.vendor;
+
+    // Check date filters
+    let dateMatch = true;
+
+    if (activeFilters.startDate || activeFilters.endDate) {
+      const purchaseDate = new Date(purchase.date || purchase.purchaseDate);
+
+      if (activeFilters.startDate && activeFilters.endDate) {
+        // Both dates provided: check if purchase date is within range
+        const startDate = new Date(activeFilters.startDate);
+        const endDate = new Date(activeFilters.endDate);
+        endDate.setHours(23, 59, 59, 999); // Include the entire end date
+
+        dateMatch = purchaseDate >= startDate && purchaseDate <= endDate;
+      } else if (activeFilters.startDate) {
+        // Only start date provided: check if purchase date is on or after start date
+        const startDate = new Date(activeFilters.startDate);
+        dateMatch = purchaseDate >= startDate;
+      } else if (activeFilters.endDate) {
+        // Only end date provided: check if purchase date is on or before end date
+        const endDate = new Date(activeFilters.endDate);
+        endDate.setHours(23, 59, 59, 999); // Include the entire end date
+        dateMatch = purchaseDate <= endDate;
+      }
+    }
+
+    return locationMatch && vendorMatch && dateMatch;
   });
 
-  // Data fetching (unchanged)
+  // Data fetching
   useEffect(() => {
     const fetchPurchases = async () => {
       try {
@@ -119,7 +151,7 @@ const ListPoPurchaseOrder = () => {
     fetchPurchases();
   }, []);
 
-  // Action handlers (unchanged)
+  // Action handlers
   const handleEditClick = (id) => {
     navigate(`/EditPoPurchaseOrder/${id}`);
   };
@@ -134,20 +166,20 @@ const ListPoPurchaseOrder = () => {
         // Update status using productId
         const updateResponse = await api.put(
           `https://fusionmastertech.com:8443/franchisepurchaseorder/updateStatusByOrderId/${purchasePoOrderId}`,
-          { status: 3 }
+          { status: 3 },
         );
 
         if (updateResponse.status === 200) {
           // Proceed with deletion using orderId
           const deleteResponse = await api.delete(
-            `${process.env.REACT_APP_BASE_URL}/purchase-po-order/delete/${orderId}`
+            `${process.env.REACT_APP_BASE_URL}/purchase-po-order/delete/${orderId}`,
           );
 
           if (deleteResponse.status === 204) {
             setPurchases((prevPurchases) =>
               prevPurchases.filter(
-                (purchase) => purchase.purchasePoOrderId !== orderId
-              )
+                (purchase) => purchase.purchasePoOrderId !== orderId,
+              ),
             );
             alert("Purchase status updated and record deleted successfully!");
           } else {
@@ -163,16 +195,16 @@ const ListPoPurchaseOrder = () => {
     }
   };
 
-  // Export functions with renamed columns but same data mapping
+  // Export functions
   const exportCSV = () => {
     const csvData = purchases.map((purchase) => ({
-      "Order ID": purchase.id, // Using existing id field
-      "Invoice Number": purchase.referenceNumber, // Using existing referenceNumber field
-      "Purchase Date": purchase.date, // Using existing date field
-      Vendor: purchase.vendor, // Unchanged
-      "Total Quantity": purchase.totalItems, // Using existing totalItems field
-      "Total Amount": purchase.netTotalAmount, // Using existing netTotalAmount field
-      "Added By": purchase.addedBy, // Unchanged
+      "Order ID": purchase.id,
+      "Invoice Number": purchase.referenceNumber,
+      "Purchase Date": purchase.date,
+      Vendor: purchase.vendor,
+      "Total Quantity": purchase.totalItems,
+      "Total Amount": purchase.netTotalAmount,
+      "Added By": purchase.addedBy,
     }));
 
     const csv = [
@@ -204,7 +236,7 @@ const ListPoPurchaseOrder = () => {
         "Total Quantity": purchase.totalItems,
         "Total Amount": purchase.netTotalAmount,
         "Added By": purchase.addedBy,
-      }))
+      })),
     );
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Purchase Orders");
@@ -214,7 +246,6 @@ const ListPoPurchaseOrder = () => {
   const exportPDF = () => {
     const doc = new jsPDF();
 
-    // Column headers with new names but same data mapping
     const headers = [
       "Order ID",
       "Invoice Number",
@@ -226,13 +257,13 @@ const ListPoPurchaseOrder = () => {
     ];
 
     const body = purchases.map((p) => [
-      p.id, // Existing id field
-      p.referenceNumber, // Existing referenceNumber field
-      p.date, // Existing date field
-      p.vendor, // Existing vendor field
-      p.totalItems, // Existing totalItems field
-      p.netTotalAmount, // Existing netTotalAmount field
-      p.addedBy, // Existing addedBy field
+      p.id,
+      p.referenceNumber,
+      p.date,
+      p.vendor,
+      p.totalItems,
+      p.netTotalAmount,
+      p.addedBy,
     ]);
 
     doc.text("Purchase Order List", 14, 20);
@@ -264,7 +295,7 @@ const ListPoPurchaseOrder = () => {
     doc.save("PurchaseOrderList.pdf");
   };
 
-  // Column visibility toggle (unchanged logic, just with new names)
+  // Column visibility toggle
   const toggleColumn = (column) => {
     setColumnsVisibility((prev) => ({
       ...prev,
@@ -272,7 +303,7 @@ const ListPoPurchaseOrder = () => {
     }));
   };
 
-  // Print function with renamed columns but same data mapping
+  // Print function
   const printData = () => {
     const printWindow = window.open("", "_blank", "width=800,height=600");
 
@@ -307,7 +338,7 @@ const ListPoPurchaseOrder = () => {
               ${filteredPurchases
                 .slice(
                   (currentPage - 1) * entriesPerPage,
-                  currentPage * entriesPerPage
+                  currentPage * entriesPerPage,
                 )
                 .map(
                   (purchase) => `
@@ -331,7 +362,7 @@ const ListPoPurchaseOrder = () => {
                   ${columnsVisibility.totalAmount ? `<td>${purchase.netTotalAmount || "-"}</td>` : ""}
                   ${columnsVisibility.addedBy ? `<td>${purchase.addedBy || "-"}</td>` : ""}
                 </tr>
-              `
+              `,
                 )
                 .join("")}
             </tbody>
@@ -344,7 +375,7 @@ const ListPoPurchaseOrder = () => {
     printWindow.document.close();
   };
 
-  // Pagination (unchanged)
+  // Pagination
   const handleEntriesChange = (e) => {
     setEntriesPerPage(Number(e.target.value));
     setCurrentPage(1);
@@ -352,7 +383,7 @@ const ListPoPurchaseOrder = () => {
 
   const paginatedPurchases = filteredPurchases.slice(
     (currentPage - 1) * entriesPerPage,
-    currentPage * entriesPerPage
+    currentPage * entriesPerPage,
   );
 
   return (
@@ -371,7 +402,7 @@ const ListPoPurchaseOrder = () => {
           </div>
         </section>
 
-        {/* Filters section (unchanged) */}
+        {/* Filters section with separate date inputs */}
         <section className="content">
           <div className="container-fluid">
             <div className="card cardHover rounded-4 border-0">
@@ -395,7 +426,7 @@ const ListPoPurchaseOrder = () => {
               >
                 <div className="card-body">
                   <div className="row">
-                    <div className="col-md-4">
+                    <div className="col-md-3">
                       <div className="form-group">
                         <label htmlFor="location">Business Location:</label>
                         <select
@@ -415,7 +446,7 @@ const ListPoPurchaseOrder = () => {
                       </div>
                     </div>
 
-                    <div className="col-md-4">
+                    <div className="col-md-3">
                       <div className="form-group">
                         <label htmlFor="vendor">Vendor:</label>
                         <select
@@ -435,16 +466,29 @@ const ListPoPurchaseOrder = () => {
                       </div>
                     </div>
 
-                    <div className="col-md-4">
+                    <div className="col-md-3">
                       <div className="form-group">
-                        <label htmlFor="dateRange">Date Range:</label>
+                        <label htmlFor="startDate">Start Date:</label>
                         <input
-                          type="text"
+                          type="date"
                           className="form-control"
-                          id="dateRange"
-                          name="dateRange"
-                          placeholder="Select a date range"
-                          value={activeFilters.dateRange}
+                          id="startDate"
+                          name="startDate"
+                          value={activeFilters.startDate}
+                          onChange={handleFilterChange}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="col-md-3">
+                      <div className="form-group">
+                        <label htmlFor="endDate">End Date:</label>
+                        <input
+                          type="date"
+                          className="form-control"
+                          id="endDate"
+                          name="endDate"
+                          value={activeFilters.endDate}
                           onChange={handleFilterChange}
                         />
                       </div>
@@ -464,7 +508,7 @@ const ListPoPurchaseOrder = () => {
           </div>
         </section>
 
-        {/* Main table section with renamed columns */}
+        {/* Main table section */}
         <section className="content">
           <div className="container-fluid">
             <div className="card cardHover rounded-4 border-0">
@@ -623,7 +667,7 @@ const ListPoPurchaseOrder = () => {
                                   onClick={() =>
                                     handleDeleteClick(
                                       purchase.id,
-                                      purchase.purchasePoOrderId
+                                      purchase.purchasePoOrderId,
                                     )
                                   }
                                 >

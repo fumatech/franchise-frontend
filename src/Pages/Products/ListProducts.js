@@ -26,13 +26,12 @@ const staticListProducts = [
 ];
 
 function ListProducts({ userRoles }) {
-  const [ListProducts, setListProducts] = useState(staticListProducts); // Use static data
+  const [ListProducts, setListProducts] = useState(staticListProducts);
   const [columnsVisibility, setColumnsVisibility] = useState({
     productImage: true,
     productName: true,
     Action: true,
     Products: true,
-
     UnitPurchasePrice: true,
     SellingPrice: true,
     CurrentStock: true,
@@ -46,27 +45,38 @@ function ListProducts({ userRoles }) {
     SalePrice: true,
     Unit: true,
   });
-  const [entriesPerPage, setEntriesPerPage] = useState(25);
+  const [entriesPerPage, setEntriesPerPage] = useState(10);
   const [currentPage, setCurrentPage] = useState(1);
   const [data, setData] = useState([]);
   const [selectedProducts, setSelectedProducts] = useState([]);
   const [selectedRows, setSelectedRows] = useState(new Set());
   const [open, setOpen] = useState(false);
-  const navigate = useNavigate(); // Initialize navigate
+  const navigate = useNavigate();
   const [showModal, setShowModal] = useState(false);
   const handleCloseModal = () => setShowModal(false);
   const [note, setNote] = useState();
   const [selectedDate, setSelectedDate] = useState();
-  const [listProduct, setListProduct] = useState([]); // Initialize listProduct state
+  const [listProduct, setListProduct] = useState([]);
   const [selectedProduct, setSelectedProduct] = useState([]);
   const [currentStock, setCurrentStock] = useState();
 
-  // Add these state variables at the top of your component
+  // State for date filters
+  const [dateFilter, setDateFilter] = useState({
+    startDate: "",
+    endDate: "",
+  });
+
+  // State for business locations
+  const [businessLocations, setBusinessLocations] = useState([]);
+  const [selectedLocation, setSelectedLocation] = useState("");
+
+  // Filter values state
   const [filterValues, setFilterValues] = useState({
     productTypes: [],
     categories: [],
     units: [],
     brands: [],
+    locations: [],
   });
 
   const [activeFilters, setActiveFilters] = useState({
@@ -74,15 +84,43 @@ function ListProducts({ userRoles }) {
     category: "",
     unit: "",
     brand: "",
+    location: "",
   });
 
-  // Update your useEffect to extract filter values
+  // Fetch business locations
+  useEffect(() => {
+    const fetchBusinessLocations = async () => {
+      try {
+        // This API endpoint might need to be adjusted based on your backend
+        const response = await axios.get(
+          `https://fusionmastertech.com:8443/locations/getall`,
+          { withCredentials: true },
+        );
+
+        if (Array.isArray(response.data)) {
+          const locations = response.data.map(
+            (loc) => loc.name || loc.locationName,
+          );
+          setBusinessLocations(locations);
+          setFilterValues((prev) => ({
+            ...prev,
+            locations: locations,
+          }));
+        }
+      } catch (error) {
+        console.error("Error fetching business locations:", error);
+      }
+    };
+
+    fetchBusinessLocations();
+  }, []);
+
   useEffect(() => {
     const fetchProduct = async () => {
       try {
         const response = await axios.get(
           `https://fusionmastertech.com:8443/product/getallactive`,
-          { withCredentials: true }
+          { withCredentials: true },
         );
 
         if (!Array.isArray(response.data)) {
@@ -100,7 +138,7 @@ function ListProducts({ userRoles }) {
               // ✅ Product-level stock
               const stockResponse = await axios.get(
                 `https://fusionmastertech.com:8444/stock-transactions/current-stock/${product.id}`,
-                { withCredentials: true }
+                { withCredentials: true },
               );
 
               const productStock = stockResponse.data ?? "0";
@@ -111,7 +149,7 @@ function ListProducts({ userRoles }) {
                   try {
                     const variationStockResponse = await axios.get(
                       `https://fusionmastertech.com:8444/stock-transactions/current-stock/${product.id}/${variation.id}`,
-                      { withCredentials: true }
+                      { withCredentials: true },
                     );
 
                     return {
@@ -121,11 +159,11 @@ function ListProducts({ userRoles }) {
                   } catch (error) {
                     console.error(
                       `Error fetching stock for variation ${variation.id}:`,
-                      error
+                      error,
                     );
                     return { ...variation, currentStock: "0" };
                   }
-                })
+                }),
               );
 
               return {
@@ -136,7 +174,7 @@ function ListProducts({ userRoles }) {
             } catch (error) {
               console.error(
                 `Error fetching stock for product ${product.id}:`,
-                error
+                error,
               );
               return {
                 ...product,
@@ -147,24 +185,32 @@ function ListProducts({ userRoles }) {
                 })),
               };
             }
-          })
+          }),
         );
 
         setListProducts(updatedProducts);
         setListProduct(updatedProducts);
 
-        // Extract filter values
+        // Extract filter values from the actual data structure
         const productTypes = [
           ...new Set(updatedProducts.map((item) => item.productType)),
         ].filter(Boolean);
+
         const categories = [
           ...new Set(updatedProducts.map((item) => item.category)),
         ].filter(Boolean);
+
         const units = [
           ...new Set(updatedProducts.map((item) => item.unit)),
         ].filter(Boolean);
+
         const brands = [
           ...new Set(updatedProducts.map((item) => item.brand)),
+        ].filter(Boolean);
+
+        // Extract locations from businessLocation field
+        const locations = [
+          ...new Set(updatedProducts.map((item) => item.businessLocation)),
         ].filter(Boolean);
 
         setFilterValues({
@@ -172,6 +218,7 @@ function ListProducts({ userRoles }) {
           categories,
           units,
           brands,
+          locations,
         });
 
         // Load additional scripts after data is processed
@@ -192,13 +239,30 @@ function ListProducts({ userRoles }) {
     fetchProduct();
   }, []);
 
+  // Handle filter changes
   const handleFilterChange = (e) => {
     const { name, value } = e.target;
     setActiveFilters((prev) => ({
       ...prev,
       [name]: value,
     }));
-    setCurrentPage(1); // Reset to first page when filters change
+    setCurrentPage(1);
+  };
+
+  // Handle date filter changes
+  const handleDateFilterChange = (e) => {
+    const { name, value } = e.target;
+    setDateFilter((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
+    setCurrentPage(1);
+  };
+
+  // Handle location filter change
+  const handleLocationChange = (e) => {
+    setSelectedLocation(e.target.value);
+    setCurrentPage(1);
   };
 
   const resetFilters = () => {
@@ -207,8 +271,15 @@ function ListProducts({ userRoles }) {
       category: "",
       unit: "",
       brand: "",
+      location: "",
     });
+    setDateFilter({
+      startDate: "",
+      endDate: "",
+    });
+    setSelectedLocation("");
   };
+
   const [categoryMap, setCategoryMap] = useState({});
   const [brandMap, setBrandMap] = useState({});
   const [unitMap, setUnitMap] = useState({});
@@ -244,13 +315,13 @@ function ListProducts({ userRoles }) {
           brandRes.data.reduce((map, b) => {
             map[b.id] = b.brandName;
             return map;
-          }, {})
+          }, {}),
         );
         setUnitMap(
           unitRes.data.reduce((map, u) => {
             map[u.id] = u.name;
             return map;
-          }, {})
+          }, {}),
         );
       } catch (err) {
         console.error("Error fetching lookups:", err);
@@ -260,18 +331,23 @@ function ListProducts({ userRoles }) {
     fetchLookups();
   }, []);
 
-  // Update your filteredProducts calculation to handle undefined/null cases
-
   // Filter products based on active filters
   const filteredProducts =
     ListProducts?.filter((product) => {
+      // Convert product IDs to names for filtering
+      const categoryName = categoryMap[product?.category] || "";
+      const brandName = brandMap[product?.brand] || "";
+      const unitName = unitMap[product?.unit] || "";
+
       return (
         (activeFilters.productType === "" ||
           product?.productType === activeFilters.productType) &&
         (activeFilters.category === "" ||
-          product?.category === activeFilters.category) &&
-        (activeFilters.unit === "" || product?.unit === activeFilters.unit) &&
-        (activeFilters.brand === "" || product?.brand === activeFilters.brand)
+          categoryName === activeFilters.category) &&
+        (activeFilters.unit === "" || unitName === activeFilters.unit) &&
+        (activeFilters.brand === "" || brandName === activeFilters.brand) &&
+        (selectedLocation === "" ||
+          product?.businessLocation === selectedLocation)
       );
     }) || [];
 
@@ -281,6 +357,7 @@ function ListProducts({ userRoles }) {
   const endIndex = startIndex + entriesPerPage;
   const displayedCustomers = filteredProducts.slice(startIndex, endIndex);
 
+  // Export functions remain the same
   const exportCSV = () => {
     const csvData = ListProducts.map((product) => ({
       Action: product.Action,
@@ -300,7 +377,6 @@ function ListProducts({ userRoles }) {
       [
         "Action",
         "Products",
-
         "SellingPrice",
         "CurrentStock",
         "ProductType",
@@ -331,11 +407,11 @@ function ListProducts({ userRoles }) {
     const printWindow = window.open("", "", "height=800,width=1200");
     printWindow.document.write("<html><head><title>Print</title>");
     printWindow.document.write(
-      '<link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">'
+      '<link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">',
     );
     printWindow.document.write("</head><body >");
     printWindow.document.write(
-      document.getElementById("table-container").innerHTML
+      document.getElementById("table-container").innerHTML,
     );
     printWindow.document.write("</body></html>");
     printWindow.document.close();
@@ -384,19 +460,21 @@ function ListProducts({ userRoles }) {
       [column]: !prev[column],
     }));
   };
+
   const handleEntriesChange = (e) => {
     const newEntriesPerPage = Number(e.target.value);
     setEntriesPerPage(newEntriesPerPage);
-    setCurrentPage(1); // Reset to first page when changing entries per page
+    setCurrentPage(1);
   };
 
   const handleEditClick = (productId) => {
     navigate(`/EditList/${productId}`);
-    //  alert("Are you want to sure edit this product??");
   };
+
   const handleViewClick = (productId) => {
     navigate(`/ViewList/${productId}`);
   };
+
   const handleDeleteClick = (id) => {
     if (window.confirm("Are you sure you want to delete this product?")) {
       fetch(`https://fusionmastertech.com:8443/product/delete/${id}`, {
@@ -404,9 +482,8 @@ function ListProducts({ userRoles }) {
       })
         .then((response) => {
           if (response.status === 204) {
-            // Filter out the deleted product from the state
             setListProduct((prevProducts) =>
-              prevProducts.filter((product) => product.id !== id)
+              prevProducts.filter((product) => product.id !== id),
             );
             alert("Product deleted successfully!");
           } else {
@@ -417,9 +494,6 @@ function ListProducts({ userRoles }) {
     }
   };
 
-  // const startIndex = (currentPage - 1) * entriesPerPage;
-  // const endIndex = startIndex + entriesPerPage;
-  // const displayedCustomers = ListProducts.slice(startIndex, endIndex);
   const stockReportData = listProduct.flatMap((product) =>
     product.productVariations.map((variation) => ({
       ...variation,
@@ -427,50 +501,10 @@ function ListProducts({ userRoles }) {
       category: product.category,
       brand: product.brand,
       unit: variation.unit || product.unit || "N/A",
-    }))
+    })),
   );
 
   const stockReportDisplayed = stockReportData.slice(startIndex, endIndex);
-
-  const hasPermission = (permissionName) => {
-    return (role) =>
-      role.permissions((permission) => permission.name === permissionName);
-  };
-
-  // Function to download Excel file
-  const downloadExcel = async () => {
-    try {
-      // Fetch data from an API or other source
-      const response = await fetch(
-        "https://fusionmastertech.com:8443/product/getall",
-        {
-          withCredentials: true,
-        }
-      ); // Replace with your data source URL
-      const userRoles = await response.json();
-
-      // Ensure userRoles data is available
-      if (!Array.isArray(userRoles) || userRoles.length === 0) {
-        alert("No data available for download.");
-        return;
-      }
-
-      // Convert data to worksheet
-      const ws = XLSX.utils.json_to_sheet(userRoles);
-
-      // Create a new workbook and append the worksheet
-      const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, ws, "Sheet1");
-
-      // Generate Excel file and trigger download
-      XLSX.writeFile(wb, "data.xlsx");
-    } catch (error) {
-      console.error("Error fetching or generating Excel file:", error);
-      alert(
-        "An error occurred while fetching data or generating the Excel file."
-      );
-    }
-  };
 
   const handleRowSelect = (productId) => {
     setSelectedRows((prevSelectedRows) => {
@@ -497,17 +531,17 @@ function ListProducts({ userRoles }) {
   };
 
   const handleDropdownItemClick = (col, e) => {
-    e.stopPropagation(); // Prevent the event from bubbling up and affecting the dropdown toggle
-    toggleColumn(col); // Toggle column visibility
+    e.stopPropagation();
+    toggleColumn(col);
   };
+
   return (
     <div className="wrapper" style={{ maxHeight: "", overflowY: "auto" }}>
       <div className="content-wrapper">
         <section className="content">
           <div className="container-fluid py-2">
-            {/* filter start */}
+            {/* Filter Section */}
             <div className="card card-default rounded-4 border-0 cardHover">
-              {/* Clickable header area */}
               <div
                 className="my- p-3 d-flex align-items-center"
                 style={{
@@ -524,6 +558,52 @@ function ListProducts({ userRoles }) {
                 <div className="border-top">
                   <div className="card-body">
                     <div className="row py-2 g-2">
+                      {/* Date Range Filters */}
+                      <div className="col-md-3">
+                        <div className="form-group">
+                          <label className="me-2">Start Date:</label>
+                          <input
+                            type="date"
+                            className="form-control"
+                            name="startDate"
+                            value={dateFilter.startDate}
+                            onChange={handleDateFilterChange}
+                          />
+                        </div>
+                      </div>
+
+                      <div className="col-md-3">
+                        <div className="form-group">
+                          <label className="me-2">End Date:</label>
+                          <input
+                            type="date"
+                            className="form-control"
+                            name="endDate"
+                            value={dateFilter.endDate}
+                            onChange={handleDateFilterChange}
+                          />
+                        </div>
+                      </div>
+
+                      {/* Location Dropdown */}
+                      <div className="col-md-3">
+                        <div className="form-group">
+                          <label className="me-2">Location:</label>
+                          <select
+                            className="form-select"
+                            value={selectedLocation}
+                            onChange={handleLocationChange}
+                          >
+                            <option value="">All Locations</option>
+                            {filterValues.locations.map((location, index) => (
+                              <option key={`loc-${index}`} value={location}>
+                                {location}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
+
                       {/* Product Type Dropdown */}
                       <div className="col-md-3">
                         <div className="form-group">
@@ -544,26 +624,6 @@ function ListProducts({ userRoles }) {
                         </div>
                       </div>
 
-                      {/* Category Dropdown */}
-                      <div className="col-md-3">
-                        <div className="form-group">
-                          <label className="me-2">Category:</label>
-                          <select
-                            className="form-select"
-                            name="category"
-                            value={activeFilters.category}
-                            onChange={handleFilterChange}
-                          >
-                            <option value="">All</option>
-                            {filterValues.categories.map((category, index) => (
-                              <option key={`cat-${index}`} value={category}>
-                                {category}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
-                      </div>
-
                       {/* Unit Dropdown */}
                       <div className="col-md-3">
                         <div className="form-group">
@@ -577,7 +637,7 @@ function ListProducts({ userRoles }) {
                             <option value="">All</option>
                             {filterValues.units.map((unit, index) => (
                               <option key={`unit-${index}`} value={unit}>
-                                {unit}
+                                {unitMap[unit] || unit}
                               </option>
                             ))}
                           </select>
@@ -597,7 +657,27 @@ function ListProducts({ userRoles }) {
                             <option value="">All</option>
                             {filterValues.brands.map((brand, index) => (
                               <option key={`brand-${index}`} value={brand}>
-                                {brand}
+                                {brandMap[brand] || brand}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
+
+                      {/* Category Dropdown */}
+                      <div className="col-md-3">
+                        <div className="form-group">
+                          <label className="me-2">Category:</label>
+                          <select
+                            className="form-select"
+                            name="category"
+                            value={activeFilters.category}
+                            onChange={handleFilterChange}
+                          >
+                            <option value="">All</option>
+                            {filterValues.categories.map((category, index) => (
+                              <option key={`cat-${index}`} value={category}>
+                                {categoryMap[category] || category}
                               </option>
                             ))}
                           </select>
@@ -612,7 +692,12 @@ function ListProducts({ userRoles }) {
                             e.stopPropagation();
                             resetFilters();
                           }}
-                          disabled={!Object.values(activeFilters).some(Boolean)}
+                          disabled={
+                            !Object.values(activeFilters).some(Boolean) &&
+                            !dateFilter.startDate &&
+                            !dateFilter.endDate &&
+                            !selectedLocation
+                          }
                         >
                           <i className="fa fa-times me-1"></i> Reset All Filters
                         </button>
@@ -622,7 +707,7 @@ function ListProducts({ userRoles }) {
                 </div>
               </Collapse>
             </div>
-            {/* fillter end  */}
+            {/* Filter end */}
 
             <div className="card cardHover rounded-4 border-0 ">
               <div className="card-body">
@@ -664,7 +749,7 @@ function ListProducts({ userRoles }) {
                   className="tab-content"
                   id="custom-content-above-tabContent"
                 >
-                  {/* All Products */}
+                  {/* All Products Tab */}
                   <div
                     className="tab-pane fade show active"
                     id="custom-content-above-home"
@@ -683,6 +768,7 @@ function ListProducts({ userRoles }) {
                             value={entriesPerPage}
                             onChange={handleEntriesChange}
                           >
+                            <option value={10}>10</option>
                             <option value={25}>25</option>
                             <option value={50}>50</option>
                             <option value={100}>100</option>
@@ -739,13 +825,13 @@ function ListProducts({ userRoles }) {
                                   <input
                                     type="checkbox"
                                     checked={columnsVisibility[col]}
-                                    onChange={() => toggleColumn(col)} // Toggle column visibility on checkbox change
+                                    onChange={() => toggleColumn(col)}
                                     className="mr-2"
                                   />
                                   <span
                                     onClick={(e) =>
                                       handleDropdownItemClick(col, e)
-                                    } // Handle click on dropdown item
+                                    }
                                   >
                                     {col
                                       .replace(/([A-Z])/g, " $1")
@@ -779,7 +865,6 @@ function ListProducts({ userRoles }) {
                               {columnsVisibility.SellingPrice && (
                                 <th>Price Inc Tax</th>
                               )}
-
                               {columnsVisibility.ProductType && (
                                 <th>Product Type</th>
                               )}
@@ -854,11 +939,9 @@ function ListProducts({ userRoles }) {
                                       : "N/A"}
                                   </td>
                                 )}
-
                                 {columnsVisibility.ProductType && (
                                   <td>{product.productType}</td>
                                 )}
-
                                 {columnsVisibility.Category && (
                                   <td>
                                     {categoryMap[product.category] || "N/A"}
@@ -877,7 +960,6 @@ function ListProducts({ userRoles }) {
                             ))}
                           </tbody>
                         </table>
-                        {/* Add this after your table */}
                         <div className="d-flex justify-content-between align-items-center ">
                           <div>
                             Showing {startIndex + 1} to{" "}
@@ -886,59 +968,10 @@ function ListProducts({ userRoles }) {
                           </div>
                         </div>
                       </div>
-
-                      {/* Footer button */}
-                      {/* <div className="container my-2">
-                        <div className="row">
-                          <div className="col-12 col-lg-8   float-left d-flex ">
-                            <div className=" mx-2 ">
-                              <Button
-                                className="select_btn p-lg-1"
-                                variant="outline-primary"
-                              >
-                                Delete Selected
-                              </Button>
-                            </div>
-                            <div className=" mx-2 ">
-                              <Button
-                                className="select_btn p-lg-1"
-                                variant="outline-secondary"
-                              >
-                                Add to Location
-                              </Button>
-                            </div>
-                            <div className=" mx-2 ">
-                              <Button
-                                className="select_btn p-lg-1"
-                                variant="outline-success"
-                              >
-                                Remove From Function
-                              </Button>
-                            </div>
-                            <div className=" mx-2 ">
-                              <Button
-                                className="select_btn p-lg-1"
-                                variant="outline-warning"
-                              >
-                                Deactivate Selected
-                              </Button>
-                            </div>
-
-                            <div className=" mx-2 ">
-                              <Button
-                                className="select_btn p-lg-1"
-                                variant="outline-danger"
-                              >
-                                WooCommerce Sync
-                              </Button>
-                            </div>
-                          </div>
-                        </div>
-                      </div> */}
                     </div>
                   </div>
 
-                  {/* stock Products */}
+                  {/* Stock Report Tab */}
                   <div
                     className="tab-pane fade"
                     id="custom-content-above-profile"
@@ -952,7 +985,6 @@ function ListProducts({ userRoles }) {
                       aria-labelledby="custom-content-above-home-tab"
                     >
                       <div className="card-body">
-                        {/* Entries and Filter Section */}
                         <div className="row mb-3 d-flex align-items-center">
                           <div className="col-12 col-md-auto form-group mb-2 d-flex align-items-center text-bold mt-2 mb-2 mr-2">
                             <label
@@ -975,7 +1007,6 @@ function ListProducts({ userRoles }) {
                             Entries
                           </div>
 
-                          {/* Export Buttons Section */}
                           <div className="col d-flex flex-wrap align-items-center">
                             <button
                               onClick={exportCSV}
@@ -1038,7 +1069,6 @@ function ListProducts({ userRoles }) {
                           </div>
                         </div>
 
-                        {/* Main Table */}
                         <div id="table-container" style={{ overflowX: "auto" }}>
                           <table
                             id="variationReport"
@@ -1097,7 +1127,6 @@ function ListProducts({ userRoles }) {
                                     {columnsVisibility.variation && (
                                       <td>{variation.variationValue}</td>
                                     )}
-
                                     {columnsVisibility.Category && (
                                       <td>
                                         {categoryMap[product.category] || "N/A"}
@@ -1129,7 +1158,7 @@ function ListProducts({ userRoles }) {
                                       </td>
                                     )}
                                   </tr>
-                                ))
+                                )),
                               )}
                             </tbody>
                           </table>
