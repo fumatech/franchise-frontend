@@ -35,6 +35,19 @@ function AddPurchaseReturn() {
   const [totalTax, setTotalTax] = useState(0);
   const [totalAmount, setTotalAmount] = useState(0);
 
+  const vendorOptions = (vendorlist || []).map((vendorItem) => ({
+    value: vendorItem.name,
+    label: vendorItem.name,
+  }));
+  const selectMenuProps = {
+    menuPortalTarget: document.body,
+    menuPosition: "fixed",
+    styles: {
+      menuPortal: (base) => ({ ...base, zIndex: 9999 }),
+      menu: (base) => ({ ...base, zIndex: 9999 }),
+    },
+  };
+
   // Fetch tax rates from API
   useEffect(() => {
     axios
@@ -322,6 +335,10 @@ function AddPurchaseReturn() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!vendor) {
+      alert("Vendor is required.");
+      return;
+    }
 
     const formattedOrderDate = orderDate
       ? orderDate.toISOString().split("T")[0]
@@ -399,19 +416,23 @@ function AddPurchaseReturn() {
                           <div className="">
                             <label className="me-2 d-md-inline">Vendor</label>
                             <div className="d-flex align-items-center">
-                              <select
-                                className="form-select me-2"
-                                value={vendor}
-                                onChange={(e) => setVendor(e.target.value)}
-                                required
-                              >
-                                <option value="">Select Vendor</option>
-                                {vendorlist.map((vendor) => (
-                                  <option key={vendor.id} value={vendor.name}>
-                                    {vendor.name}
-                                  </option>
-                                ))}
-                              </select>
+                              <Select
+                                inputId="vendor"
+                                options={vendorOptions}
+                                value={
+                                  vendorOptions.find(
+                                    (option) =>
+                                      String(option.value) === String(vendor)
+                                  ) || null
+                                }
+                                onChange={(selectedOption) =>
+                                  setVendor(selectedOption?.value || "")
+                                }
+                                placeholder="Select Vendor"
+                                isSearchable
+                                className="flex-grow-1 me-2"
+                                {...selectMenuProps}
+                              />
                             </div>
                           </div>
                         </div>

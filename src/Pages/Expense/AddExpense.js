@@ -18,7 +18,7 @@ function AddExpense() {
   const [progress, setProgress] = useState(0);
   const [errorMessage, setErrorMessage] = useState("");
 
-  const [taxId, setTaxId] = useState("None");
+  const [taxId, setTaxId] = useState("");
   const [finalTotal, setFinalTotal] = useState("");
   const [additionalNotes, setAdditionalNotes] = useState("");
   const [isRefund, setIsRefund] = useState(false);
@@ -52,6 +52,48 @@ function AddExpense() {
   const [chequeNumber, setChequeNumber] = useState("");
   const [bankAccountNumber, setBankAccountNumber] = useState("");
   const [customTransactionNo, setCustomTransactionNo] = useState("");
+
+  const locationOptions = [{ value: "Fuma", label: "Fuma" }];
+  const expenseCategoryOptions = [
+    { value: "", label: "Please Select" },
+    ...expenses.map((cat) => ({
+      value: String(cat.id),
+      label: cat.expenseName,
+    })),
+  ];
+  const subCategoryOptions = [
+    { value: "", label: "Please Select" },
+    ...filteredSubExpenses.map((sub) => ({
+      value: String(sub.id),
+      label: sub.expenseName,
+    })),
+  ];
+  const contactOptions = [
+    { value: "", label: "Please Select" },
+    { value: "Walk_In_Customer", label: "Walk-In Customer - (CO0005)" },
+  ];
+  const paymentMethodOptions = [
+    { value: "", label: "Select Payment Method" },
+    ...paymentMethods.map((method) => ({
+      value: method,
+      label: method,
+    })),
+  ];
+  const paymentAccountOptions = [
+    { value: "", label: "None" },
+    ...paymentAccounts.map((account) => ({
+      value: String(account.id),
+      label: `${account.accountName} / ${account.accountNumber}`,
+    })),
+  ];
+  const selectMenuProps = {
+    menuPortalTarget: document.body,
+    menuPosition: "fixed",
+    styles: {
+      menuPortal: (base) => ({ ...base, zIndex: 9999 }),
+      menu: (base) => ({ ...base, zIndex: 9999 }),
+    },
+  };
 
   const handleMethodChange = (e) => {
     setPaymentMethod(e.target.value);
@@ -236,6 +278,14 @@ function AddExpense() {
   };
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!locationId) {
+      alert("Business Location is required.");
+      return;
+    }
+    if (!paymentMethod) {
+      alert("Payment Method is required.");
+      return;
+    }
 
     const expenseObj = {
       businessLocation: locationId,
@@ -306,58 +356,66 @@ function AddExpense() {
                       {/* Business Location */}
                       <div className="col-md-4 form-group">
                         <label htmlFor="location_id">Business Location:*</label>
-                        <select
-                          className="form-control"
-                          required
-                          id="location_id"
-                          value={locationId}
-                          onChange={(e) => setLocationId(e.target.value)}
-                        >
-                          <option value="">Please Select</option>
-                          <option value="Fuma">Fuma</option>
-                        </select>
+                        <Select
+                          inputId="location_id"
+                          options={locationOptions}
+                          value={
+                            locationOptions.find(
+                              (option) =>
+                                String(option.value) === String(locationId)
+                            ) || null
+                          }
+                          onChange={(selectedOption) =>
+                            setLocationId(selectedOption?.value || "")
+                          }
+                          placeholder="Please Select"
+                          isSearchable
+                          {...selectMenuProps}
+                        />
                       </div>
                       {/* Expense Category */}
                       <div className="col-md-4">
                         <label htmlFor="expense_category_id">
                           Expense Category:
                         </label>
-                        <select
-                          className="form-control"
-                          id="expense_category_id"
-                          value={expenseCategoryId}
-                          onChange={(e) => handleCategoryChange(e.target.value)}
-                        >
-                          <option value="">Please Select</option>
-
-                          {expenses.map((cat) => (
-                            <option key={cat.id} value={cat.id}>
-                              {cat.expenseName}
-                            </option>
-                          ))}
-                        </select>
+                        <Select
+                          inputId="expense_category_id"
+                          options={expenseCategoryOptions}
+                          value={
+                            expenseCategoryOptions.find(
+                              (option) =>
+                                String(option.value) ===
+                                String(expenseCategoryId)
+                            ) || null
+                          }
+                          onChange={(selectedOption) =>
+                            handleCategoryChange(selectedOption?.value || "")
+                          }
+                          isSearchable
+                          {...selectMenuProps}
+                        />
                       </div>
                       {/* Sub category */}
                       <div className="col-md-4">
                         <label htmlFor="expense_sub_category_id">
                           Sub category:
                         </label>
-                        <select
-                          className="form-control"
-                          id="expense_sub_category_id"
-                          value={expenseSubCategoryId}
-                          onChange={(e) =>
-                            setExpenseSubCategoryId(e.target.value)
+                        <Select
+                          inputId="expense_sub_category_id"
+                          options={subCategoryOptions}
+                          value={
+                            subCategoryOptions.find(
+                              (option) =>
+                                String(option.value) ===
+                                String(expenseSubCategoryId)
+                            ) || null
                           }
-                        >
-                          <option value="">Please Select</option>
-
-                          {filteredSubExpenses.map((sub) => (
-                            <option key={sub.id} value={sub.id}>
-                              {sub.expenseName}
-                            </option>
-                          ))}
-                        </select>
+                          onChange={(selectedOption) =>
+                            setExpenseSubCategoryId(selectedOption?.value || "")
+                          }
+                          isSearchable
+                          {...selectMenuProps}
+                        />
                       </div>
                       {/* Sub category */}
                       {/* <div className="col-md-4">
@@ -422,17 +480,21 @@ function AddExpense() {
                       {/* Expense for contact */}
                       <div className="col-md-4">
                         <label htmlFor="contact_id">Expense for contact:</label>
-                        <select
-                          className="form-control"
-                          id="contact_id"
-                          value={contactId}
-                          onChange={(e) => setContactId(e.target.value)}
-                        >
-                          <option value="">Please Select</option>
-                          <option value="Walk_In_Customer">
-                            Walk-In Customer - (CO0005)
-                          </option>
-                        </select>
+                        <Select
+                          inputId="contact_id"
+                          options={contactOptions}
+                          value={
+                            contactOptions.find(
+                              (option) =>
+                                String(option.value) === String(contactId)
+                            ) || null
+                          }
+                          onChange={(selectedOption) =>
+                            setContactId(selectedOption?.value || "")
+                          }
+                          isSearchable
+                          {...selectMenuProps}
+                        />
                       </div>
                       {/* Attach document */}
                       <div className="col-12 col-md-4">
@@ -523,14 +585,31 @@ function AddExpense() {
                         <label htmlFor="tax_id">Applicable Tax:</label>
                         <Select
                           options={taxOptions}
+                          value={
+                            taxOptions.find(
+                              (option) =>
+                                String(option.value) === String(taxId)
+                            ) || null
+                          }
                           onChange={(selectedOption) =>
                             setTaxId(selectedOption ? selectedOption.value : "")
                           }
                           isClearable={true}
+                          isSearchable
+                          menuPortalTarget={document.body}
+                          menuPosition="fixed"
                           styles={{
                             control: (provided) => ({
                               ...provided,
                               width: "100%",
+                            }),
+                            menuPortal: (base) => ({
+                              ...base,
+                              zIndex: 9999,
+                            }),
+                            menu: (base) => ({
+                              ...base,
+                              zIndex: 9999,
                             }),
                           }}
                         />
@@ -747,25 +826,26 @@ function AddExpense() {
                                           <i className="fas fa-money-bill-alt"></i>
                                         </span>
                                       </div>
-                                      <select
-                                        className="form-control"
-                                        required
-                                        id="method"
-                                        name="method"
-                                        value={paymentMethod}
-                                        onChange={(e) =>
-                                          setPaymentMethod(e.target.value)
+                                      <Select
+                                        inputId="method"
+                                        options={paymentMethodOptions}
+                                        value={
+                                          paymentMethodOptions.find(
+                                            (option) =>
+                                              String(option.value) ===
+                                              String(paymentMethod)
+                                          ) || null
                                         }
-                                      >
-                                        <option value="">
-                                          Select Payment Method
-                                        </option>
-                                        {paymentMethods.map((method, index) => (
-                                          <option key={index} value={method}>
-                                            {method}
-                                          </option>
-                                        ))}
-                                      </select>
+                                        onChange={(selectedOption) => {
+                                          const selectedValue =
+                                            selectedOption?.value || "";
+                                          setPaymentMethod(selectedValue);
+                                          resetFields(selectedValue);
+                                        }}
+                                        isSearchable
+                                        className="flex-grow-1"
+                                        {...selectMenuProps}
+                                      />
                                     </div>
                                   </div>
                                 </div>
@@ -778,27 +858,26 @@ function AddExpense() {
                                       <span className="input-group-text bg-transparent">
                                         <i className="fas fa-money-bill-alt"></i>
                                       </span>
-                                      <select
-                                        className="form-control"
-                                        id="account"
-                                        name="account_id"
-                                        value={selectedAccount}
-                                        onChange={(e) => {
-                                          setSelectedAccount(e.target.value);
-                                          setPaymentAccount(e.target.value); // Send only the ID
+                                      <Select
+                                        inputId="account"
+                                        options={paymentAccountOptions}
+                                        value={
+                                          paymentAccountOptions.find(
+                                            (option) =>
+                                              String(option.value) ===
+                                              String(selectedAccount)
+                                          ) || null
+                                        }
+                                        onChange={(selectedOption) => {
+                                          const selectedValue =
+                                            selectedOption?.value || "";
+                                          setSelectedAccount(selectedValue);
+                                          setPaymentAccount(selectedValue);
                                         }}
-                                      >
-                                        <option value="">None</option>
-                                        {paymentAccounts.map((account) => (
-                                          <option
-                                            key={account.id}
-                                            value={account.id}
-                                          >
-                                            {account.accountName} /{" "}
-                                            {account.accountNumber}
-                                          </option>
-                                        ))}
-                                      </select>
+                                        isSearchable
+                                        className="flex-grow-1"
+                                        {...selectMenuProps}
+                                      />
                                     </div>
                                   </div>
                                 </div>

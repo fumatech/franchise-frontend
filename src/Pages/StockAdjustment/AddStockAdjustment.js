@@ -4,6 +4,7 @@ import axios from "axios";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import { Tooltip, OverlayTrigger } from "react-bootstrap";
+import Select from "react-select";
 
 function AddStockAdjustment() {
   const { id } = useParams();
@@ -28,6 +29,20 @@ function AddStockAdjustment() {
   const [error, setError] = useState("");
   const [totalUnits, setTotalUnits] = useState(0); // New state for total units
 
+  const businessLocationOptions = [{ value: "FUMA", label: "FUMA" }];
+  const adjustmentTypeOptions = [
+    { value: "normal", label: "Normal" },
+    { value: "abnormal", label: "Abnormal" },
+  ];
+  const selectMenuProps = {
+    menuPortalTarget: document.body,
+    menuPosition: "fixed",
+    styles: {
+      menuPortal: (base) => ({ ...base, zIndex: 9999 }),
+      menu: (base) => ({ ...base, zIndex: 9999 }),
+    },
+  };
+
   useEffect(() => {
     // Fetch stock adjustment data when component mounts
     const fetchStockAdjustmentData = async () => {
@@ -40,6 +55,9 @@ function AddStockAdjustment() {
 
         setAdjustmentDate(data.date);
         setBusinessLocation(data.businessLocation);
+        setAdjustmentType(
+          data.adjustmentType ? String(data.adjustmentType).toLowerCase() : ""
+        );
         setTotalAmount(data.totalAmount);
         setTotalUnits(data.totalUnits);
         setReason(data.reason);
@@ -308,6 +326,14 @@ function AddStockAdjustment() {
 
   const handleSubmit = async (event) => {
     event.preventDefault();
+    if (!businessLocation) {
+      alert("Business Location is required.");
+      return;
+    }
+    if (!adjustmentType) {
+      alert("Adjustment Type is required.");
+      return;
+    }
 
     // Prepare stock adjustment data
     const stockAdjustmentData = {
@@ -415,19 +441,23 @@ function AddStockAdjustment() {
                         <label htmlFor="businessLocation">
                           Business Location:*
                         </label>
-                        <select
-                          id="businessLocation"
-                          name="businessLocation"
-                          className="form-control"
-                          required
-                          value={businessLocation}
-                          onChange={handleBusinessLocationChange}
-                        >
-                          <option value="" disabled>
-                            Please Select
-                          </option>
-                          <option value="FUMA">FUMA</option>
-                        </select>
+                        <Select
+                          inputId="businessLocation"
+                          options={businessLocationOptions}
+                          value={
+                            businessLocationOptions.find(
+                              (option) =>
+                                String(option.value) ===
+                                String(businessLocation)
+                            ) || null
+                          }
+                          onChange={(selectedOption) =>
+                            setBusinessLocation(selectedOption?.value || "")
+                          }
+                          placeholder="Please Select"
+                          isSearchable
+                          {...selectMenuProps}
+                        />
                       </div>{" "}
                       <div className="form-group col-md-3">
                         <label htmlFor="referenceNumber">Reference No:</label>
@@ -470,20 +500,23 @@ function AddStockAdjustment() {
                             </OverlayTrigger>
                           </span>
                         </label>
-                        <select
-                          id="AdjustmentType"
-                          name="AdjustmentType"
-                          className="form-control"
-                          required
-                          value={adjustmentType}
-                          onChange={handleAdjustmentTypeChange}
-                        >
-                          <option value="" disabled>
-                            Please Select
-                          </option>
-                          <option value="normal">Normal</option>
-                          <option value="abnormal">Abnormal</option>
-                        </select>
+                        <Select
+                          inputId="AdjustmentType"
+                          options={adjustmentTypeOptions}
+                          value={
+                            adjustmentTypeOptions.find(
+                              (option) =>
+                                String(option.value).toLowerCase() ===
+                                String(adjustmentType).toLowerCase()
+                            ) || null
+                          }
+                          onChange={(selectedOption) =>
+                            setAdjustmentType(selectedOption?.value || "")
+                          }
+                          placeholder="Please Select"
+                          isSearchable
+                          {...selectMenuProps}
+                        />
                       </div>
                     </div>
                   </div>
