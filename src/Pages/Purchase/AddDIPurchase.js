@@ -84,6 +84,24 @@ function AddDIPurchase() {
   const [taxOnSubtotal, setTaxOnsubtotal] = useState(0);
   const [totalLineTotal, setTotalLineTotal] = useState(0);
 
+  const vendorOptions = (vendorlist || []).map((vendorItem) => ({
+    value: vendorItem.name,
+    label: vendorItem.name,
+  }));
+  const discountTypeOptions = [
+    { value: "", label: "None" },
+    { value: "Fixed", label: "Fixed" },
+    { value: "Percentage", label: "Percentage" },
+  ];
+  const selectMenuProps = {
+    menuPortalTarget: document.body,
+    menuPosition: "fixed",
+    styles: {
+      menuPortal: (base) => ({ ...base, zIndex: 9999 }),
+      menu: (base) => ({ ...base, zIndex: 9999 }),
+    },
+  };
+
   // Fetch payment methods
   // useEffect(() => {
   //   axios
@@ -559,8 +577,8 @@ function AddDIPurchase() {
     setIsVisible((prev) => !prev);
   };
 
-  const handleDiscountTypeChange = (e) => {
-    setDiscountType(e.target.value);
+  const handleDiscountTypeChange = (value) => {
+    setDiscountType(value);
   };
   const handleDiscountAmountChange = (e) => {
     setDiscountAmount(e.target.value);
@@ -594,6 +612,10 @@ function AddDIPurchase() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!vendor) {
+      alert("Vendor is required.");
+      return;
+    }
 
     try {
       const formattedPurchaseDate = purchaseDate
@@ -722,22 +744,23 @@ function AddDIPurchase() {
                           <div className="">
                             <label className="me-2 d-md-inline">Vendor</label>
                             <div className="d-flex align-items-center">
-                              <select
-                                className="form-select me-2"
-                                id="vendor"
-                                name="vendor"
-                                value={vendor}
-                                onChange={(e) => setVendor(e.target.value)}
-                                required
-                              >
-                                <option value="">Please Select</option>
-                                {vendorlist &&
-                                  vendorlist.map((vendor) => (
-                                    <option key={vendor.id} value={vendor.name}>
-                                      {vendor.name}
-                                    </option>
-                                  ))}
-                              </select>
+                              <Select
+                                inputId="vendor"
+                                options={vendorOptions}
+                                value={
+                                  vendorOptions.find(
+                                    (option) =>
+                                      String(option.value) === String(vendor)
+                                  ) || null
+                                }
+                                onChange={(selectedOption) =>
+                                  setVendor(selectedOption?.value || "")
+                                }
+                                placeholder="Please Select"
+                                isSearchable
+                                className="flex-grow-1 me-2"
+                                {...selectMenuProps}
+                              />
                             </div>
                           </div>
                         </div>
@@ -1097,17 +1120,24 @@ function AddDIPurchase() {
                                 <label htmlFor="discountType">
                                   Discount Type
                                 </label>
-                                <select
-                                  className="form-control select2"
-                                  id="discountType"
-                                  name="discountType"
-                                  value={discountType}
-                                  onChange={handleDiscountTypeChange}
-                                >
-                                  <option value="">None</option>
-                                  <option value="Fixed">Fixed</option>
-                                  <option value="Percentage">Percentage</option>
-                                </select>
+                                <Select
+                                  inputId="discountType"
+                                  options={discountTypeOptions}
+                                  value={
+                                    discountTypeOptions.find(
+                                      (option) =>
+                                        String(option.value) ===
+                                        String(discountType)
+                                    ) || null
+                                  }
+                                  onChange={(selectedOption) =>
+                                    handleDiscountTypeChange(
+                                      selectedOption?.value || ""
+                                    )
+                                  }
+                                  isSearchable
+                                  {...selectMenuProps}
+                                />
                               </div>
                             </td>
 

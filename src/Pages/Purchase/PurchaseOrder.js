@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import DatePicker from "react-datepicker";
+import Select from "react-select";
 import "react-datepicker/dist/react-datepicker.css";
 import "./PurchaseOrder.css";
 import axios from "axios";
@@ -27,6 +28,19 @@ function PurchaseOrder() {
   const [userName, setUserName] = useState("");
   const [addedBy, setAddedBy] = useState("");
   const [userEmail, setUserEmail] = useState(null);
+
+  const vendorOptions = (vendorlist || []).map((vendorItem) => ({
+    value: vendorItem.name,
+    label: vendorItem.name,
+  }));
+  const selectMenuProps = {
+    menuPortalTarget: document.body,
+    menuPosition: "fixed",
+    styles: {
+      menuPortal: (base) => ({ ...base, zIndex: 9999 }),
+      menu: (base) => ({ ...base, zIndex: 9999 }),
+    },
+  };
 
   useEffect(() => {
     const email = sessionStorage.getItem("userEmail");
@@ -285,6 +299,10 @@ function PurchaseOrder() {
   };
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!vendor) {
+      alert("Vendor is required.");
+      return;
+    }
     const formattedOrderDate = orderDate.toISOString().split("T")[0];
 
     const orderItems = selectedProducts.map((product) => ({
@@ -363,19 +381,22 @@ function PurchaseOrder() {
                         <label>
                           Vendor<span className="text-danger">*</span>
                         </label>
-                        <select
-                          className="form-control"
-                          value={vendor}
-                          onChange={(e) => setVendor(e.target.value)}
-                          required
-                        >
-                          <option value="">Select Vendor</option>
-                          {vendorlist.map((vendor) => (
-                            <option key={vendor.id} value={vendor.name}>
-                              {vendor.name}
-                            </option>
-                          ))}
-                        </select>
+                        <Select
+                          inputId="vendor"
+                          options={vendorOptions}
+                          value={
+                            vendorOptions.find(
+                              (option) =>
+                                String(option.value) === String(vendor)
+                            ) || null
+                          }
+                          onChange={(selectedOption) =>
+                            setVendor(selectedOption?.value || "")
+                          }
+                          placeholder="Select Vendor"
+                          isSearchable
+                          {...selectMenuProps}
+                        />
                       </div>
                     </div>
                     <div className="col-md-4">
