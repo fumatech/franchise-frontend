@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useLocation, Link } from "react-router-dom";
 import "@fortawesome/fontawesome-free/css/all.min.css";
 import { NavLink } from "react-router-dom";
@@ -8,6 +8,7 @@ const Menu = () => {
   const [sideBarCollapsed, setSideBarCollapsed] = useState(true);
   const [activeMenu, setActiveMenu] = useState("");
   const [activeSubMenu, setActiveSubMenu] = useState("");
+  const settingMenuRef = useRef(null);
 
   const [openDropdowns, setOpenDropdowns] = useState({
     userManagement: false,
@@ -253,6 +254,15 @@ const Menu = () => {
     }
   }, [location]);
 
+  useEffect(() => {
+    if (openDropdowns.setting && settingMenuRef.current) {
+      settingMenuRef.current.scrollIntoView({
+        behavior: "smooth",
+        block: "nearest",
+      });
+    }
+  }, [openDropdowns.setting]);
+
   const toggleDropdown = (dropdown) => {
     setOpenDropdowns((prev) => ({
       ...Object.keys(prev).reduce((acc, key) => {
@@ -278,11 +288,10 @@ const Menu = () => {
   return (
     <div>
       <aside
-        className={`main-sidebar sidebar-elevation-1 ${
-          sideBarCollapsed ? "sidebar-collapse" : ""
-        }`}
+        className={`main-sidebar sidebar-elevation-1 ${sideBarCollapsed ? "sidebar-collapse" : ""
+          }`}
       >
-        <div className="sidebar p-0">
+        <div className="sidebar p-0 menuSidebar">
           <div className="user-panel pt-2 mb-3 d-flex align-content-center justify-content-center">
             <div className="info text-light">
               {/* <Link to="/Dashboard" className="d-block"> */}
@@ -336,9 +345,8 @@ const Menu = () => {
 
               {/*  User Management */}
               <li
-                className={`nav-item ${
-                  activeMenu === "userManagement" ? "menu-open" : ""
-                } mb-2`}
+                className={`nav-item ${activeMenu === "userManagement" ? "menu-open" : ""
+                  } `}
               >
                 {" "}
                 <a
@@ -378,9 +386,8 @@ const Menu = () => {
                   >
                     User Management
                     <i
-                      className={`fas fa-angle-${
-                        openDropdowns.userManagement ? "down" : "right"
-                      } right`}
+                      className={`fas fa-angle-${openDropdowns.userManagement ? "down" : "right"
+                        } right`}
                       style={{
                         color:
                           activeMenu === "userManagement"
@@ -391,9 +398,8 @@ const Menu = () => {
                   </p>
                 </a>
                 <ul
-                  className={`nav nav-treeview menu-options ${
-                    openDropdowns.userManagement ? "d-block" : "d-none"
-                  }`}
+                  className={`nav nav-treeview menu-options ${openDropdowns.userManagement ? "d-block" : "d-none"
+                    }`}
                   style={{
                     backgroundColor:
                       activeMenu === "userManagement"
@@ -441,9 +447,8 @@ const Menu = () => {
 
               {/* Contacts */}
               <li
-                className={`nav-item ${
-                  activeMenu === "contact" ? "menu-open" : ""
-                } mb-2`}
+                className={`nav-item ${activeMenu === "contact" ? "menu-open" : ""
+                  } `}
               >
                 <a
                   href="#"
@@ -476,9 +481,8 @@ const Menu = () => {
                   >
                     Contact
                     <i
-                      className={`fas fa-angle-${
-                        openDropdowns.contact ? "down" : "right"
-                      } right`}
+                      className={`fas fa-angle-${openDropdowns.contact ? "down" : "right"
+                        } right`}
                       style={{
                         color: activeMenu === "contact" ? "#0040C1" : "#4b5565",
                       }}
@@ -486,9 +490,8 @@ const Menu = () => {
                   </p>
                 </a>
                 <ul
-                  className={`nav nav-treeview menu-options ${
-                    openDropdowns.contact ? "d-block" : "d-none"
-                  }`}
+                  className={`nav nav-treeview menu-options ${openDropdowns.contact ? "d-block" : "d-none"
+                    }`}
                   style={{
                     backgroundColor:
                       activeMenu === "contact"
@@ -535,9 +538,8 @@ const Menu = () => {
 
               {/* Product */}
               <li
-                className={`nav-item ${
-                  activeMenu === "product" ? "menu-open" : ""
-                } mb-2`}
+                className={`nav-item ${activeMenu === "product" ? "menu-open" : ""
+                  } `}
               >
                 <a
                   href="#"
@@ -570,9 +572,8 @@ const Menu = () => {
                   >
                     Product
                     <i
-                      className={`fas fa-angle-${
-                        openDropdowns.product ? "down" : "right"
-                      } right`}
+                      className={`fas fa-angle-${openDropdowns.product ? "down" : "right"
+                        } right`}
                       style={{
                         color: activeMenu === "product" ? "#0040C1" : "#4b5565",
                       }}
@@ -580,9 +581,8 @@ const Menu = () => {
                   </p>
                 </a>
                 <ul
-                  className={`nav nav-treeview menu-options ${
-                    openDropdowns.product ? "d-block" : "d-none"
-                  }`}
+                  className={`nav nav-treeview menu-options ${openDropdowns.product ? "d-block" : "d-none"
+                    }`}
                   style={{
                     backgroundColor:
                       activeMenu === "product"
@@ -614,9 +614,8 @@ const Menu = () => {
 
               {/* Purchase */}
               <li
-                className={`nav-item ${
-                  activeMenu === "purchase" ? "menu-open" : ""
-                } mb-2`}
+                className={`nav-item ${activeMenu === "purchase" ? "menu-open" : ""
+                  } `}
               >
                 <a
                   href="#"
@@ -649,9 +648,8 @@ const Menu = () => {
                   >
                     Purchase
                     <i
-                      className={`fas fa-angle-${
-                        openDropdowns.purchase ? "down" : "right"
-                      } right`}
+                      className={`fas fa-angle-${openDropdowns.purchase ? "down" : "right"
+                        } right`}
                       style={{
                         color:
                           activeMenu === "purchase" ? "#0040C1" : "#4b5565",
@@ -660,9 +658,8 @@ const Menu = () => {
                   </p>
                 </a>
                 <ul
-                  className={`nav nav-treeview menu-options ${
-                    openDropdowns.purchase ? "d-block" : "d-none"
-                  }`}
+                  className={`nav nav-treeview menu-options ${openDropdowns.purchase ? "d-block" : "d-none"
+                    }`}
                   style={{
                     backgroundColor:
                       activeMenu === "purchase"
@@ -829,9 +826,8 @@ const Menu = () => {
 
               {/* Sell */}
               <li
-                className={`nav-item ${
-                  activeMenu === "sell" ? "menu-open" : ""
-                } mb-2`}
+                className={`nav-item ${activeMenu === "sell" ? "menu-open" : ""
+                  } `}
               >
                 <a
                   href="#"
@@ -864,9 +860,8 @@ const Menu = () => {
                   >
                     Sell
                     <i
-                      className={`fas fa-angle-${
-                        openDropdowns.sell ? "down" : "right"
-                      } right`}
+                      className={`fas fa-angle-${openDropdowns.sell ? "down" : "right"
+                        } right`}
                       style={{
                         color: activeMenu === "sell" ? "#0040C1" : "#4b5565",
                       }}
@@ -874,9 +869,8 @@ const Menu = () => {
                   </p>
                 </a>
                 <ul
-                  className={`nav nav-treeview menu-options ${
-                    openDropdowns.sell ? "d-block" : "d-none"
-                  }`}
+                  className={`nav nav-treeview menu-options ${openDropdowns.sell ? "d-block" : "d-none"
+                    }`}
                   style={{
                     backgroundColor:
                       activeMenu === "sell"
@@ -961,9 +955,8 @@ const Menu = () => {
 
               {/* Stock Transfer */}
               <li
-                className={`nav-item ${
-                  activeMenu === "stockTransfer" ? "menu-open" : ""
-                } mb-2`}
+                className={`nav-item ${activeMenu === "stockTransfer" ? "menu-open" : ""
+                  } `}
               >
                 <a
                   href="#"
@@ -1000,9 +993,8 @@ const Menu = () => {
                   >
                     Stock Transfer
                     <i
-                      className={`fas fa-angle-${
-                        openDropdowns.stockTransfer ? "down" : "right"
-                      } right`}
+                      className={`fas fa-angle-${openDropdowns.stockTransfer ? "down" : "right"
+                        } right`}
                       style={{
                         color:
                           activeMenu === "stockTransfer"
@@ -1013,9 +1005,8 @@ const Menu = () => {
                   </p>
                 </a>
                 <ul
-                  className={`nav nav-treeview menu-options ${
-                    openDropdowns.stockTransfer ? "d-block" : "d-none"
-                  }`}
+                  className={`nav nav-treeview menu-options ${openDropdowns.stockTransfer ? "d-block" : "d-none"
+                    }`}
                   style={{
                     backgroundColor:
                       activeMenu === "stockTransfer"
@@ -1066,9 +1057,8 @@ const Menu = () => {
 
               {/* Stock Adjustment */}
               <li
-                className={`nav-item ${
-                  activeMenu === "stockAdjustment" ? "menu-open" : ""
-                } mb-2`}
+                className={`nav-item ${activeMenu === "stockAdjustment" ? "menu-open" : ""
+                  } `}
               >
                 <a
                   href="#"
@@ -1109,9 +1099,8 @@ const Menu = () => {
                   >
                     Stock Adjustment
                     <i
-                      className={`fas fa-angle-${
-                        openDropdowns.stockAdjustment ? "down" : "right"
-                      } right`}
+                      className={`fas fa-angle-${openDropdowns.stockAdjustment ? "down" : "right"
+                        } right`}
                       style={{
                         color:
                           activeMenu === "stockAdjustment"
@@ -1122,9 +1111,8 @@ const Menu = () => {
                   </p>
                 </a>
                 <ul
-                  className={`nav nav-treeview menu-options ${
-                    openDropdowns.stockAdjustment ? "d-block" : "d-none"
-                  }`}
+                  className={`nav nav-treeview menu-options ${openDropdowns.stockAdjustment ? "d-block" : "d-none"
+                    }`}
                   style={{
                     backgroundColor:
                       activeMenu === "stockAdjustment"
@@ -1213,9 +1201,8 @@ const Menu = () => {
 
               {/* Expenses */}
               <li
-                className={`nav-item ${
-                  activeMenu === "expenses" ? "menu-open" : ""
-                } mb-2`}
+                className={`nav-item ${activeMenu === "expenses" ? "menu-open" : ""
+                  } `}
               >
                 <a
                   href="#"
@@ -1248,9 +1235,8 @@ const Menu = () => {
                   >
                     Expenses
                     <i
-                      className={`fas fa-angle-${
-                        openDropdowns.expenses ? "down" : "right"
-                      } right`}
+                      className={`fas fa-angle-${openDropdowns.expenses ? "down" : "right"
+                        } right`}
                       style={{
                         color:
                           activeMenu === "expenses" ? "#0040C1" : "#4b5565",
@@ -1259,9 +1245,8 @@ const Menu = () => {
                   </p>
                 </a>
                 <ul
-                  className={`nav nav-treeview menu-options ${
-                    openDropdowns.expenses ? "d-block" : "d-none"
-                  }`}
+                  className={`nav nav-treeview menu-options ${openDropdowns.expenses ? "d-block" : "d-none"
+                    }`}
                   style={{
                     backgroundColor:
                       activeMenu === "expenses"
@@ -1331,9 +1316,8 @@ const Menu = () => {
 
               {/* Payment */}
               <li
-                className={`nav-item ${
-                  activeMenu === "payment" ? "menu-open" : ""
-                } mb-2`}
+                className={`nav-item ${activeMenu === "payment" ? "menu-open" : ""
+                  } `}
               >
                 <a
                   href="#"
@@ -1366,9 +1350,8 @@ const Menu = () => {
                   >
                     Payment
                     <i
-                      className={`fas fa-angle-${
-                        openDropdowns.payment ? "down" : "right"
-                      } right`}
+                      className={`fas fa-angle-${openDropdowns.payment ? "down" : "right"
+                        } right`}
                       style={{
                         color: activeMenu === "payment" ? "#0040C1" : "#4b5565",
                       }}
@@ -1376,9 +1359,8 @@ const Menu = () => {
                   </p>
                 </a>
                 <ul
-                  className={`nav nav-treeview menu-options ${
-                    openDropdowns.payment ? "d-block" : "d-none"
-                  }`}
+                  className={`nav nav-treeview menu-options ${openDropdowns.payment ? "d-block" : "d-none"
+                    }`}
                   style={{
                     backgroundColor:
                       activeMenu === "payment"
@@ -1483,9 +1465,8 @@ const Menu = () => {
 
               {/* Report */}
               <li
-                className={`nav-item ${
-                  activeMenu === "report" ? "menu-open" : ""
-                } mb-2`}
+                className={`nav-item ${activeMenu === "report" ? "menu-open" : ""
+                  } `}
               >
                 <a
                   href="#"
@@ -1518,9 +1499,8 @@ const Menu = () => {
                   >
                     Report
                     <i
-                      className={`fas fa-angle-${
-                        openDropdowns.report ? "down" : "right"
-                      } right`}
+                      className={`fas fa-angle-${openDropdowns.report ? "down" : "right"
+                        } right`}
                       style={{
                         color: activeMenu === "report" ? "#0040C1" : "#4b5565",
                       }}
@@ -1528,9 +1508,8 @@ const Menu = () => {
                   </p>
                 </a>
                 <ul
-                  className={`nav nav-treeview menu-options ${
-                    openDropdowns.report ? "d-block" : "d-none"
-                  }`}
+                  className={`nav nav-treeview menu-options ${openDropdowns.report ? "d-block" : "d-none"
+                    }`}
                   style={{
                     backgroundColor:
                       activeMenu === "report"
@@ -1731,9 +1710,9 @@ const Menu = () => {
 
               {/* Setting */}
               <li
-                className={`nav-item ${
-                  activeMenu === "setting" ? "menu-open" : ""
-                } mb-2`}
+                ref={settingMenuRef}
+                className={`nav-item ${activeMenu === "setting" ? "menu-open" : ""
+                  } `}
               >
                 {" "}
                 <a
@@ -1767,9 +1746,8 @@ const Menu = () => {
                   >
                     Setting
                     <i
-                      className={`fas fa-angle-${
-                        openDropdowns.setting ? "down" : "right"
-                      } right`}
+                      className={`fas fa-angle-${openDropdowns.setting ? "down" : "right"
+                        } right`}
                       style={{
                         color: activeMenu === "setting" ? "#0040C1" : "#4b5565",
                       }}
@@ -1777,9 +1755,8 @@ const Menu = () => {
                   </p>
                 </a>
                 <ul
-                  className={`nav nav-treeview menu-options ${
-                    openDropdowns.setting ? "d-block" : "d-none"
-                  }`}
+                  className={`nav nav-treeview menu-options ${openDropdowns.setting ? "d-block" : "d-none"
+                    }`}
                   style={{
                     color: activeMenu === "setting" ? "#0040C1" : "#4b5565",
                   }}
@@ -1870,3 +1847,10 @@ const Menu = () => {
 };
 
 export default Menu;
+
+
+
+
+
+
+

@@ -1,0 +1,104 @@
+.business-details-card {
+  overflow: hidden;
+}
+
+.business-details-table-wrapper {
+  width: 100%;
+  overflow-x: auto;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+}
+
+.business-details-table {
+  min-width: 620px;
+  width: 100%;
+  table-layout: fixed;
+  border-collapse: collapse;
+  background-color: #ffffff;
+}
+
+.business-details-table thead th {
+  background-color: #0c4461;
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  border: 1px solid #d6dee7;
+  padding: 12px 16px;
+  white-space: nowrap;
+  text-align: left;
+}
+
+.business-details-table thead th:first-child {
+  width: 38%;
+}
+
+.business-details-table tbody td {
+  padding: 12px 16px;
+  border: 1px solid #e1e7ef;
+  color: #1f2937;
+  font-size: 15px;
+  vertical-align: middle;
+  word-break: break-word;
+  text-align: left;
+}
+
+.business-details-table tbody td:first-child {
+  font-weight: 600;
+  color: #0f2940;
+  background-color: #f8fafc;
+}
+
+.business-details-table thead th:last-child,
+.business-details-table tbody td:last-child {
+  border-right: 1px solid #e1e7ef;
+}
+
+.business-details-table tbody tr:hover td {
+  background-color: #f7fbff;
+}
+
+@media (max-width: 768px) {
+  .business-details-table {
+    min-width: 100%;
+  }
+
+  .business-details-table thead {
+    display: none;
+  }
+
+  .business-details-table tbody tr {
+    display: block;
+    border-top: 1px solid #e5e7eb;
+  }
+
+  .business-details-table tbody tr:first-child {
+    border-top: none;
+  }
+
+  .business-details-table tbody td {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 12px;
+    width: 100%;
+    padding: 10px 14px;
+    border-left: none;
+    border-right: none;
+    border-bottom: 1px solid #e6edf5;
+    background: #ffffff !important;
+    font-size: 14px;
+  }
+
+  .business-details-table tbody tr td:last-child {
+    border-bottom: none;
+  }
+
+  .business-details-table tbody td::before {
+    content: attr(data-label);
+    font-weight: 700;
+    color: #0c4461;
+    min-width: 120px;
+    flex-shrink: 0;
+  }
+}
