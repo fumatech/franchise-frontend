@@ -406,13 +406,13 @@ const Header = () => {
   };
 
   const handleMouseLeave = (e) => {
-    e.currentTarget.style.backgroundColor = "#003cb3";
+    e.currentTarget.style.backgroundColor = "#0C4461";
   };
 
   const currentDate = new Date().toLocaleDateString("en-US");
 
   const navItemStyle = {
-    backgroundColor: "#003cb3",
+    backgroundColor: "#0C4461",
     padding: "6px 12px",
     borderRadius: "8px",
     marginLeft: "8px",
@@ -454,7 +454,7 @@ const Header = () => {
     <>
       <nav
         style={{
-          backgroundColor: "#003cb3",
+          backgroundColor: "#0C4461",
           padding: "10px 20px",
           display: "flex",
           justifyContent: "space-between",

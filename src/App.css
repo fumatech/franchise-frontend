@@ -22,6 +22,7 @@
 
 /* Media query to animate the logo only if motion is not reduced */
 @media (prefers-reduced-motion: no-preference) {
+
   /* Infinite spinning animation for the App logo */
   .App-logo {
     animation: App-logo-spin infinite 20s linear;
@@ -31,7 +32,7 @@
 /* App header styling */
 .App-header {
   background-color: #282c34;
-  min-height: 100vh;
+  min-height: calc(100vh - 60px);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -57,6 +58,7 @@
 .nav-link {
   padding: 0px;
 }
+
 .nav-icon {
   width: 17px;
   height: 17px;
@@ -72,6 +74,7 @@
   from {
     transform: rotate(0deg);
   }
+
   to {
     transform: rotate(360deg);
   }
@@ -113,6 +116,7 @@
   margin-left: 3px;
   font-size: 14px;
 }
+
 .dashboard-background {
   /* 
   background: rgb(36,37,63);
@@ -124,6 +128,7 @@
 .dashbord-card-logo {
   color: white;
 }
+
 /* .dashboard-background {
   background: linear-gradient(
     135deg,
@@ -138,28 +143,28 @@
 
 .menu_theme {
   background: rgb(25, 24, 48);
-  background: linear-gradient(
-    179deg,
-    rgba(25, 24, 48, 1) 0%,
-    rgba(12, 68, 97, 1) 49%
-  );
+  background: linear-gradient(179deg,
+      rgba(25, 24, 48, 1) 0%,
+      rgba(12, 68, 97, 1) 49%);
   border: none;
 
-  backdrop-filter: blur(20px); /* Adjust the blur value */
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); /* Optional shadow for contrast */
+  backdrop-filter: blur(20px);
+  /* Adjust the blur value */
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  /* Optional shadow for contrast */
 }
 
 .header-background {
   background: rgba(240, 239, 244, 0);
-  background: linear-gradient(
-    179deg,
-    rgba(25, 24, 48, 0) 0%,
-    rgba(12, 69, 97, 0.015) 49%
-  );
+  background: linear-gradient(179deg,
+      rgba(25, 24, 48, 0) 0%,
+      rgba(12, 69, 97, 0.015) 49%);
   border: none;
 
-  backdrop-filter: blur(20px); /* Adjust the blur value */
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); /* Optional shadow for contrast */
+  backdrop-filter: blur(20px);
+  /* Adjust the blur value */
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  /* Optional shadow for contrast */
 }
 
 /* Light Theme */
@@ -198,42 +203,55 @@ body {
   border: 2px white;
   margin: 10px;
   background: rgb(25, 24, 48);
-  background: linear-gradient(
-    179deg,
-    rgba(25, 24, 48, 1) 0%,
-    rgba(12, 68, 97, 1) 49%
-  );
-  backdrop-filter: blur(1px); /* Adjust the value for the blur effect */
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.9); /* Optional: Adds a subtle shadow for better contrast */
-  padding: 20px; /* Optional: Adds some padding inside the card */
+  background: linear-gradient(179deg,
+      rgba(25, 24, 48, 1) 0%,
+      rgba(12, 68, 97, 1) 49%);
+  backdrop-filter: blur(1px);
+  /* Adjust the value for the blur effect */
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.9);
+  /* Optional: Adds a subtle shadow for better contrast */
+  padding: 20px;
+  /* Optional: Adds some padding inside the card */
   border-radius: 25px;
 }
 
 .table-rounded {
   border-collapse: separate;
-  border-spacing: 0; /* To remove the default spacing */
+  border-spacing: 0;
+  /* To remove the default spacing */
 }
 
 .table-rounded th,
 .table-rounded td {
-  border: 1px solid #dee2e6; /* Table border color */
-  border-radius: 8px; /* Adjust the radius as needed */
-  overflow: hidden; /* Prevents content from overflowing */
+  border: 1px solid #dee2e6;
+  /* Table border color */
+  border-radius: 8px;
+  /* Adjust the radius as needed */
+  overflow: hidden;
+  /* Prevents content from overflowing */
 }
 
 .table-rounded th {
-  background-color: #f8f9fa; /* Optional: Header background color */
+  background-color: #f8f9fa;
+  /* Optional: Header background color */
 }
 
 .main-sidebar {
-  background-color: #ffffff !important; /* Force transparency */
-  position: fixed; /* Make it float */
-  top: 0;
+  background-color: #ffffff !important;
+  /* Force transparency */
+  position: fixed;
+  /* Make it float */
+  top: 60px;
   left: 0;
-  z-index: 1000; /* Ensure it's above other content */
+  z-index: 1000;
+  /* Ensure it's above other content */
   border: none;
   /* padding: 20px 8px 30px 11px; */
+
+  height: calc(100vh - 60px);
+  overflow: hidden;
 }
+
 .app-background {
   /* background-image: linear-gradient(120deg, #e0c3fc 0%, #8ec5fc 100%); */
   background-color: #f4f6f9;
@@ -248,16 +266,18 @@ body {
 
 .user-panel {
   height: 60px;
-  background-color: #003aaf;
+  background-color: #0C4461;
   color: #ffffff;
 }
 
 .dataTables_wrapper .dataTables_paginate {
-  color: red; /* Change the text color to red */
+  color: red;
+  /* Change the text color to red */
 }
 
 .dataTables_wrapper .dataTables_paginate a {
-  background-color: #0c4461; /* Change the link color to red */
+  background-color: #0c4461;
+  /* Change the link color to red */
 }
 
 .page-item.active .page-link {
@@ -265,6 +285,7 @@ body {
   /* background-color: #007bff; */
   border-color: #007bff;
 }
+
 h1 {
   font-size: 28px;
 }
@@ -282,7 +303,8 @@ h1 {
 
 .date-range-dropdown {
   position: absolute;
-  top: 38px; /* Adjust based on input height */
+  top: 38px;
+  /* Adjust based on input height */
   left: 0;
   width: 300px;
   background-color: white;
@@ -314,27 +336,30 @@ h1 {
   border: 1px solid #ccc;
 }
 
-.select2-container--default
-  .select2-selection--single
-  .select2-selection__rendered {
-  line-height: 24px !important; /* Change this value as needed */
-  padding: 0px 10px; /* Adjust padding as needed */
+.select2-container--default .select2-selection--single .select2-selection__rendered {
+  line-height: 24px !important;
+  /* Change this value as needed */
+  padding: 0px 10px;
+  /* Adjust padding as needed */
 }
-.select2-container--default
-  .select2-selection--single
-  .select2-selection__rendered {
-  line-height: 24px !important; /* Add !important to override */
+
+.select2-container--default .select2-selection--single .select2-selection__rendered {
+  line-height: 24px !important;
+  /* Add !important to override */
 }
 
 .select2-container--default .select2-search__field:focus {
   outline: 0;
-  border: none !important; /* Remove the border */
-  box-shadow: none !important; /* Remove any shadow */
+  border: none !important;
+  /* Remove the border */
+  box-shadow: none !important;
+  /* Remove any shadow */
 }
 
 /* If you want to apply this to all states (including non-focus) */
 .select2-container--default .select2-search__field {
-  border: none !important; /* Remove the border */
+  border: none !important;
+  /* Remove the border */
 }
 
 /* Hide the spinner buttons in WebKit browsers (Chrome, Safari) */
@@ -370,14 +395,26 @@ input[type="number"]::-webkit-outer-spin-button {
 }
 
 .menuSidebar {
-  height: 100vh; /* Adjust according to your header or top margin */
+  height: calc(100vh - 60px);
+  /* Adjust according to your header or top margin */
   overflow-y: auto;
-  overflow-x: hidden; /* Prevent horizontal scroll if necessary */
+  overflow-x: hidden;
+  /* Prevent horizontal scroll if necessary */
+  scrollbar-width: thin;
+  scrollbar-color: #0c4461 #e9eef3;
 }
 
-/* Hide scrollbars */
 .menuSidebar::-webkit-scrollbar {
-  width: 0;
+  width: 6px;
+}
+
+.menuSidebar::-webkit-scrollbar-track {
+  background: #e9eef3;
+}
+
+.menuSidebar::-webkit-scrollbar-thumb {
+  background-color: #0c4461;
+  border-radius: 999px;
 }
 
 .modal-body {
@@ -385,55 +422,69 @@ input[type="number"]::-webkit-outer-spin-button {
 }
 
 .parent-container {
-  overflow: visible; /* Ensures child elements like the dropdown aren't clipped */
-  position: relative; /* Necessary for the dropdown to be positioned correctly */
+  overflow: visible;
+  /* Ensures child elements like the dropdown aren't clipped */
+  position: relative;
+  /* Necessary for the dropdown to be positioned correctly */
 }
 
 .date-range-dropdown {
-  position: absolute !important ; /* Makes it float */
-  z-index: 1050 !important ; /* Ensure it appears above other elements */
-  background-color: white !important ; /* Dropdown background */
-  border: 1px solid #ccc !important ; /* Optional: Border for visibility */
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1) !important ; /* Optional: Subtle shadow */
-  list-style-type: none !important ;
-  padding: 0 !important ;
-  margin: 0 !important ;
-  max-height: 200px !important ; /* Limits height */
-  overflow-y: auto !important ; /* Adds scrolling within the dropdown only if needed */
-  width: 100% !important ; /* Matches the input field width */
+  position: absolute !important;
+  /* Makes it float */
+  z-index: 1050 !important;
+  /* Ensure it appears above other elements */
+  background-color: white !important;
+  /* Dropdown background */
+  border: 1px solid #ccc !important;
+  /* Optional: Border for visibility */
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1) !important;
+  /* Optional: Subtle shadow */
+  list-style-type: none !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  max-height: 200px !important;
+  /* Limits height */
+  overflow-y: auto !important;
+  /* Adds scrolling within the dropdown only if needed */
+  width: 100% !important;
+  /* Matches the input field width */
 }
 
 .date-range-dropdown li {
-  padding: 10px 15px !important ;
-  cursor: pointer !important ;
+  padding: 10px 15px !important;
+  cursor: pointer !important;
 }
 
 .date-range-dropdown li:hover {
-  background-color: #f0f0f0 !important ; /* Optional: Highlight hovered item */
+  background-color: #f0f0f0 !important;
+  /* Optional: Highlight hovered item */
 }
 
 .invoice-button:hover {
-  background-color: #45a049; /* Darker green on hover */
-}
-/* Main menu item hover */
-.nav-item > .nav-link:hover {
-  background-color: rgba(0, 64, 193, 0.1) !important;
+  background-color: #45a049;
+  /* Darker green on hover */
 }
 
-.nav-item > .nav-link:hover i,
-.nav-item > .nav-link:hover p {
+/* Main menu item hover */
+.nav-item>.nav-link:hover {
+  background-color: rgba(12, 68, 97, 0.1) !important;
+}
+
+.nav-item>.nav-link:hover i,
+.nav-item>.nav-link:hover p {
   color: #000000 !important;
 }
 
 /* Submenu item hover */
 .nav-treeview .nav-item .nav-link:hover {
-  background-color: rgba(0, 64, 193, 0.1) !important;
+  background-color: rgba(12, 68, 97, 0.1) !important;
 }
 
 .nav-treeview .nav-item .nav-link:hover,
 .nav-treeview .nav-item .nav-link:hover i {
   color: #000000 !important;
 }
+
 .nav-item {
   font-size: 13px;
   font-weight: 450;
@@ -461,6 +512,7 @@ input[type="number"]::-webkit-outer-spin-button {
 .payment-status:hover {
   color: darkblue;
 }
+
 /* Payment Modal Styles */
 .payment-status-cell {
   cursor: pointer;
@@ -480,6 +532,7 @@ input[type="number"]::-webkit-outer-spin-button {
 .modal-lg {
   max-width: 900px;
 }
+
 /* Add this to your CSS file */
 .dataTables_wrapper .dataTables_filter {
   display: block !important;
@@ -491,4 +544,11 @@ input[type="number"]::-webkit-outer-spin-button {
   margin-left: 0.5em !important;
   display: inline-block !important;
   width: auto !important;
+}
+
+.main-sidebar .sidebar {
+  height: 100%;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-bottom: 16px;
 }
